@@ -18,7 +18,7 @@ const twelveMonths = () => {
   });
 };
 const money = (amount, currency) => (amount == null ? "—" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: currency || "EUR", maximumFractionDigits: ["XOF", "XAF", "GNF"].includes(currency) ? 0 : 2 }).format(amount));
-const TX_STATUS = (s) => (s === "completed" ? "completed" : s === "cancelled" ? "rejected" : "pending");
+const TX_STATUS = (s) => (s === "completed" ? "completed" : s === "cancelled" || s === "rejected" ? "rejected" : "pending");
 const ACCOUNT_STATUS = (s) => (s === "suspended" ? "suspended" : s === "active" ? "active" : "pending");
 const like = (q) => `%${String(q).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
@@ -58,7 +58,7 @@ export async function dashboard() {
     `SELECT (SELECT COUNT(*) FROM users WHERE role = 'client' AND deleted_at IS NULL) AS clients,
             (SELECT COUNT(*) FROM users WHERE role = 'mandataire' AND deleted_at IS NULL) AS mandataires,
             (SELECT COUNT(DISTINCT country_code) FROM mandataire_accounts WHERE status = 'published') AS countries,
-            (SELECT COUNT(*) FROM transactions WHERE status NOT IN ('completed','cancelled')) AS open_transactions`,
+            (SELECT COUNT(*) FROM transactions WHERE status NOT IN ('completed','rejected','cancelled')) AS open_transactions`,
   );
   const [monthly] = await pool.query(
     `SELECT DATE_FORMAT(completed_at, '%Y-%m') AS m, COUNT(*) AS n, COALESCE(SUM(amount_eur), 0) AS volume
@@ -188,7 +188,8 @@ export async function setAccountStatus(admin, userPublicId, action, { ip = null,
 
 export async function listVerifications() {
   const [rows] = await pool.query(
-    `SELECT v.reference, v.status, v.created_at, v.decided_at, v.transaction_id, t.proof_pending_since, t.amount, t.currency,
+    `SELECT v.reference, v.status, v.created_at, v.decided_at, v.transaction_id, v.evidence_due_at, v.decision_note,
+            t.status AS tx_status, t.proof_rejections, t.proof_pending_since, t.amount, t.currency,
             at.slug AS type, at.name AS account, cu.pseudo AS client, pu.pseudo AS pro, mp.slug
        FROM verification_requests v
        JOIN transactions t ON t.id = v.transaction_id
@@ -213,5 +214,6 @@ export async function listVerifications() {
     ref: r.reference, status: r.status, client: r.client, pro: r.pro, slug: r.slug, type: r.type, account: r.account,
     amount: money(r.amount == null ? null : Number(r.amount), r.currency), pendingSince: r.proof_pending_since, requestedAt: r.created_at,
     decidedAt: r.decided_at, evidence: files.get(r.transaction_id) || [],
+    evidenceDueAt: r.evidence_due_at, rejections: Number(r.proof_rejections) || 0, note: r.decision_note,
   }));
 }

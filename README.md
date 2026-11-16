@@ -62,9 +62,16 @@ pour socket.io. Les pages publiques utilisent le dernier espace visité. La déc
   L'étape en cours est `transactions.status` ; les messages en sont la trace.
 - **Chiffrement** (AES-256-GCM, clé `DATA_ENCRYPTION_KEY` dans `.env`, à sauvegarder) : contenu des messages,
   coordonnées de réception (mandataires et clients), fichiers joints sur le disque.
-- **Messages éphémères** : effacés avec leurs fichiers **3 jours après la clôture de leur transaction** (une transaction
+- **Messages éphémères** : effacés avec leurs fichiers **10 jours après la clôture de leur transaction** (une transaction
   en cours garde ses messages : délai de 7 jours, vérification par l'équipe). Les transactions restent (plafonds,
   statistiques, évaluations), sans coordonnées. Ménage horaire automatique.
+- **Preuve de paiement** : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 »
+  (7 jours au plus, rappel quotidien au mandataire). Au-delà de 2 rejets, le client choisit : Attendre (7 jours),
+  Je laisse, ou Faire vérifier ce mandataire. Vérification : mandataire restreint (plus d'ajout de compte, niveau bloqué),
+  preuves du refus sous 72 h ; l'équipe lève la restriction ou la prolonge de 100 jours (aussi sans preuve sous 72 h).
+  Validées ou rejetées, les transactions sont évaluées ; seules les validées font monter de niveau.
+- **Moyen de réception** : le client cherche son pays et choisit un moyen disponible (Mobile Money, Moov Money, crypto,
+  virement…, `content/payout-methods.js`), puis remplit ses informations (ex. numéro + nom et prénoms).
 - **Fichiers** : type vérifié d'après le contenu (PNG, JPEG, WebP, PDF, 5 Mo), lus via `/fichiers/:id` par les seuls
   participants (et l'administration pour les vérifications).
 - **Notifications** : enregistrées (fil « Notifications ») et poussées en direct (toast, compteurs du menu).

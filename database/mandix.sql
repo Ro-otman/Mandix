@@ -132,6 +132,12 @@ CREATE TABLE IF NOT EXISTS mandataire_profiles (
   certified_at        DATETIME        NULL COMMENT 'Badge doré : 1 000 transactions terminées atteintes',
   rating_avg          DECIMAL(3,2)    NULL,
   rating_count        INT UNSIGNED    NOT NULL DEFAULT 0,
+  rejected_count      INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT 'Transactions rejetées (évaluées par le client) : statistiques du profil',
+  -- Restriction (vérification demandée par un client : 72 h au plus ; sanction : 100 jours) :
+  -- plus d'ajout de compte, et le niveau ne dépasse pas restricted_level_count transactions.
+  restricted_until    DATETIME        NULL,
+  restriction_reason  ENUM('verification','sanction') NULL,
+  restricted_level_count INT UNSIGNED NULL COMMENT 'Transactions réussies au début de la restriction',
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -258,11 +264,14 @@ CREATE TABLE IF NOT EXISTS transactions (
   mandataire_account_id   BIGINT UNSIGNED NOT NULL COMMENT 'Compte du mandataire choisi par le client',
   receive_option          ENUM('friends_family','goods_services','instant','classic') NULL
                           COMMENT 'Option choisie par le mandataire : PayPal Amis et proches / Biens et services ; virement instantané / classique',
+  -- Anciens statuts conservés pour les données existantes : credit_evidence_*, under_verification, disputed.
   status                  ENUM('requested','awaiting_amount','awaiting_receive_details','awaiting_proof','proof_review','proof_pending',
                                'credit_evidence_requested','credit_evidence_sent','under_verification','disputed',
+                               'proof_validated','rejection_choice','client_waiting','verification_requested','verification_review',
                                'awaiting_payout_details','awaiting_transfer','awaiting_receipt','awaiting_review',
-                               'completed','cancelled')
+                               'completed','rejected','cancelled')
                           NOT NULL DEFAULT 'requested',
+  outcome                 ENUM('success','rejected') NULL COMMENT 'Issue connue au moment de l''évaluation : validée ou rejetée',
   currency                CHAR(3)         NULL COMMENT 'Devise du montant (par défaut celle du compte)',
   amount                  DECIMAL(14,2)   NULL COMMENT 'Montant saisi par le client dans la messagerie',
   amount_eur              DECIMAL(12,2)   NULL COMMENT 'Contre-valeur en euros, contrôlée contre le plafond',
@@ -272,7 +281,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   payout_details_enc      VARBINARY(1024) NULL COMMENT 'Coordonnées de réception du client, chiffrées',
   payout_option           ENUM('friends_family','goods_services','instant','classic') NULL
                           COMMENT 'Option choisie par le client pour recevoir l''argent (PayPal, virement)',
-  proof_pending_since     DATETIME NULL COMMENT 'Début du délai de 7 jours (En attente, ou relancé après confirmation)',
+  payout_method           VARCHAR(40)     NULL COMMENT 'Moyen de réception choisi par le client (content/payout-methods.js)',
+  payout_country          CHAR(2)         NULL COMMENT 'Pays du moyen de réception',
+  proof_pending_since     DATETIME NULL COMMENT 'Début du délai de 7 jours (En attente, ou Attendre choisi par le client)',
+  pending_reminded_at     DATETIME NULL COMMENT 'Dernier rappel quotidien au mandataire (paiement en attente)',
+  client_choice_notified_at DATETIME NULL COMMENT 'Client prévenu que le délai de 7 jours est écoulé',
   first_response_at       DATETIME NULL COMMENT 'Première réponse du mandataire (demande du montant) : délai de réponse',
   proof_rejections        SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Preuves de paiement rejetées pendant la transaction',
   proof_validated_at      DATETIME NULL,
@@ -280,7 +293,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   receipt_confirmed_at    DATETIME NULL COMMENT 'Le client a confirmé avoir reçu l''argent',
   completed_at            DATETIME NULL,
   cancelled_at            DATETIME NULL,
-  open_lock               BIGINT UNSIGNED AS (CASE WHEN status IN ('completed','cancelled') THEN NULL ELSE conversation_id END) STORED,
+  open_lock               BIGINT UNSIGNED AS (CASE WHEN status IN ('completed','rejected','cancelled') THEN NULL ELSE conversation_id END) STORED,
   created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -314,6 +327,7 @@ CREATE TABLE IF NOT EXISTS conversation_events (
   sender_user_id      BIGINT UNSIGNED NULL COMMENT 'NULL = système',
   event_type          ENUM('request','ask_amount','amount','receive_info','proof','proof_status',
                            'credit_proof_request','credit_proof','credit_proof_ok','verification_request',
+                           'client_choice','refusal_proof','ask_payout',
                            'verification_result','payout_info','sent','receipt') NOT NULL,
   payload_enc         VARBINARY(4096) NOT NULL COMMENT 'Contenu du message chiffré (AES-256-GCM, contexte event:<conversation>), jamais en clair',
   created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -367,7 +381,8 @@ CREATE TABLE IF NOT EXISTS verification_requests (
   conversation_id   BIGINT UNSIGNED NOT NULL,
   client_id         BIGINT UNSIGNED NOT NULL,
   mandataire_id     BIGINT UNSIGNED NOT NULL,
-  request_event_id  BIGINT UNSIGNED NULL COMMENT 'Message « demander une vérification » (NULL une fois le message effacé)',
+  request_event_id  BIGINT UNSIGNED NULL COMMENT 'Message « Faire vérifier ce mandataire » (NULL une fois le message effacé)',
+  evidence_due_at   DATETIME        NULL COMMENT 'Le mandataire doit envoyer les preuves du refus avant cette date (72 h)',
   status            ENUM('open','authentic','not_authentic') NOT NULL DEFAULT 'open',
   decided_by        BIGINT UNSIGNED NULL,
   decided_at        DATETIME        NULL,
@@ -386,7 +401,8 @@ CREATE TABLE IF NOT EXISTS verification_requests (
   CONSTRAINT fk_verification_requests_mandataire   FOREIGN KEY (mandataire_id)    REFERENCES mandataire_profiles (id),
   CONSTRAINT fk_verification_requests_event        FOREIGN KEY (request_event_id) REFERENCES conversation_events (id) ON DELETE SET NULL,
   CONSTRAINT fk_verification_requests_decider      FOREIGN KEY (decided_by)       REFERENCES users (id),
-  CONSTRAINT chk_verification_requests_decision CHECK (status = 'open' OR (decided_by IS NOT NULL AND decided_at IS NOT NULL))
+  -- Décision datée ; decided_by NULL : décision automatique (aucune preuve du refus sous 72 h).
+  CONSTRAINT chk_verification_requests_decision CHECK (status = 'open' OR decided_at IS NOT NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -532,7 +548,10 @@ CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
 CREATE OR REPLACE VIEW v_public_mandataires AS
 SELECT
   mp.id, mp.slug, u.pseudo, mp.country_code, mp.bio, mp.languages, mp.avatar_key,
-  mp.rating_avg, mp.rating_count, mp.transactions_count,
+  mp.rating_avg, mp.rating_count, mp.transactions_count, mp.rejected_count,
+  CASE WHEN mp.restricted_until > UTC_TIMESTAMP()
+       THEN LEAST(mp.transactions_count, COALESCE(mp.restricted_level_count, mp.transactions_count))
+       ELSE mp.transactions_count END AS level_transactions,
   (mp.verified_at IS NOT NULL)  AS is_verified,
   (mp.certified_at IS NOT NULL) AS is_certified,
   u.last_seen_at, u.created_at AS member_since

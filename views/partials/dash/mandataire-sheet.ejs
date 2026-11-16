@@ -53,9 +53,14 @@
           <% } else { %><dd>—</dd><dd class="msheet__hint">Pas encore d'avis</dd><% } %>
         </div>
         <div><dt>Plafond</dt><dd><%= profile.limitLabel %></dd></div>
+        <%# Transactions validées (comptent pour le niveau) et rejetées (évaluées par le client) %>
         <div>
-          <dt>Transactions</dt>
+          <dt>Réussies</dt>
           <dd><%= fmt.formatNumber(profile.transactions) %></dd>
+        </div>
+        <div>
+          <dt>Rejetées</dt>
+          <dd><%= fmt.formatNumber(profile.rejected || 0) %></dd>
         </div>
       </dl>
     </header>

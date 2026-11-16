@@ -53,7 +53,7 @@ export async function deleteAccount(user, ctx) {
   await withTransaction(async (connection) => {
     const [[open]] = await connection.execute(
       `SELECT COUNT(*) AS n FROM transactions WHERE (client_id = ? OR mandataire_id = (SELECT id FROM mandataire_profiles WHERE user_id = ?))
-         AND status NOT IN ('completed','cancelled')`,
+         AND status NOT IN ('completed','rejected','cancelled')`,
       [user.id, user.id],
     );
     if (Number(open.n)) throw Object.assign(new Error("open"), { code: "OPEN_TRANSACTION" });

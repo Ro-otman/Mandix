@@ -75,7 +75,7 @@ const config = Object.freeze({
   // Clé de chiffrement des données sensibles au repos (utils/encryption.js)
   dataEncryptionKey: secret("DATA_ENCRYPTION_KEY"),
   // Messagerie éphémère : messages effacés 3 jours après la clôture de leur transaction
-  messages: { retentionDays: 3 },
+  messages: { retentionDays: 10 }, // messages éphémères : effacés 10 jours après la clôture de leur transaction
 
   // Durée de validité des liens envoyés par e-mail
   tokens: {

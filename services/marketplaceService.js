@@ -46,6 +46,7 @@ function toCard(m) {
   const typeSlugs = unique(accounts.map((a) => a.type));
   // Pays des comptes (libre, indépendant de la nationalité du mandataire, qui est facultative).
   const accountCountries = unique(accounts.map((a) => a.country).filter(Boolean));
+  const level = m.levelTransactions ?? m.transactions ?? 0; // transactions qui comptent pour le niveau
   return {
     slug: m.slug,
     firstName: m.firstName,
@@ -77,11 +78,12 @@ function toCard(m) {
     responseLabel: responseLabel(m.responseHours),
     // Badge « vérifié » : uniquement si la vérification a été faite (la vue publique ne contient que des profils approuvés).
     verified: m.verified === true,
-    // Plafond par transaction : déduit du nombre de transactions réalisées (utils/limits.js).
-    limitEur: limitForTransactions(m.transactions ?? 0), // null au niveau 10 : sans plafond
-    limitLabel: limitLabel(limitForTransactions(m.transactions ?? 0)),
-    level: tierFor(m.transactions ?? 0).level,
-    transactions: m.transactions ?? 0,
+    // Plafond par transaction : déduit des transactions réussies (utils/limits.js) ; bloqué pendant une restriction.
+    limitEur: limitForTransactions(level), // null au niveau 10 : sans plafond
+    limitLabel: limitLabel(limitForTransactions(level)),
+    level: tierFor(level).level,
+    transactions: m.transactions ?? 0, // transactions réussies
+    rejected: m.rejected ?? 0, // transactions rejetées (statistiques du profil)
     certified: isCertified(m.transactions ?? 0),
     presence: presence(m.lastSeenAt ?? null),
   };

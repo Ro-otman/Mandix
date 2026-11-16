@@ -16,7 +16,7 @@ function lastTwelveMonths() {
   });
 }
 
-const STATUS = (s) => (s === "completed" ? "completed" : s === "cancelled" ? "rejected" : "pending");
+const STATUS = (s) => (s === "completed" ? "completed" : s === "cancelled" || s === "rejected" ? "rejected" : "pending");
 const money = (amount, currency) =>
   amount == null ? "—" : new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: ["XOF", "XAF", "GNF"].includes(currency) ? 0 : 2 }).format(amount);
 

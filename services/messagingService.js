@@ -5,8 +5,19 @@
  * plafond, option attendue, pièce jointe appartenant à la transaction…), quel que soit ce que le navigateur envoie.
  * L'étape en cours est la colonne transactions.status ; les messages en sont la trace lisible.
  *
- * Messages éphémères et chiffrés : contenu chiffré (AES-256-GCM) ; effacés, avec leurs fichiers, 3 jours après la
+ * Messages éphémères et chiffrés : contenu chiffré (AES-256-GCM) ; effacés, avec leurs fichiers, 10 jours après la
  * clôture de leur transaction (une transaction en cours garde ses messages : délai de 7 jours, vérification Mandix).
+ *
+ * Preuve de paiement : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 ».
+ *  - En attente : 7 jours au plus, rappel quotidien au mandataire ; ensuite le client choisit Je laisse ou
+ *    Faire vérifier ce mandataire.
+ *  - Plus de 2 rejets : le client choisit Attendre (7 jours, puis Je laisse / Faire vérifier), Je laisse, ou
+ *    Faire vérifier ce mandataire.
+ *  - Vérification : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix lève la
+ *    restriction (refus justifié) ou la prolonge de 100 jours (refus non justifié, ou aucune preuve).
+ *    Restreint : plus d'ajout de compte, niveau bloqué.
+ *  - Validée ou rejetée, la transaction se termine par l'évaluation du client ; seules les validées font
+ *    monter de niveau.
  *
  * Diffusion : « message:new » aux participants de la conversation, « conversation:update » (aperçu, non lus) et
  * notification au destinataire.
@@ -17,14 +28,15 @@ import { Conversation, Transaction, ConversationEvent, Attachment } from "../mod
 import { MandataireAccount, accountTypeIds } from "../models/MandataireAccount.js";
 import { AuditLog } from "../models/Security.js";
 import { ACCOUNT_TYPES, ACCOUNT_OPTIONS } from "../content/account-types.js";
-import { countryName } from "../content/countries.js";
+import { COUNTRIES, countryName } from "../content/countries.js";
+import { PAYOUT_FIELD_TYPES, payoutMethod, payoutMethodsFor, payoutMethodName } from "../content/payout-methods.js";
 import { appreciationsFor } from "../content/reviews.js";
 import { EUR_RATES, limitForTransactions, limitLabel } from "../utils/limits.js";
 import { CERTIFICATION_THRESHOLD } from "../utils/badges.js";
 import { sensitiveReason } from "../utils/sensitive.js";
 import { avatarSvg, defaultAvatarSpec } from "../utils/avatar.js";
 import { presence } from "../utils/presence.js";
-import { eventText, PENDING_MAX_DAYS } from "./chatFlow.js";
+import { eventText, PENDING_MAX_DAYS, MAX_REJECTIONS, VERIFICATION_HOURS, SANCTION_DAYS } from "./chatFlow.js";
 import * as notifications from "./notificationService.js";
 import * as files from "./fileService.js";
 import * as hub from "../realtime/hub.js";
@@ -71,7 +83,7 @@ export async function participation(user, conversation, mandataire = null) {
 async function publicMandataireBySlug(slug) {
   if (typeof slug !== "string" || !/^[a-z0-9-]{1,140}$/.test(slug)) return null;
   const [rows] = await pool.execute(
-    `SELECT pm.id, pm.slug, pm.pseudo, pm.transactions_count, pm.is_verified, pm.last_seen_at, mp.user_id
+    `SELECT pm.id, pm.slug, pm.pseudo, pm.transactions_count, pm.level_transactions, pm.is_verified, pm.last_seen_at, mp.user_id
        FROM v_public_mandataires pm JOIN mandataire_profiles mp ON mp.id = pm.id WHERE pm.slug = ? LIMIT 1`,
     [slug],
   );
@@ -88,6 +100,68 @@ function optionFor(slug, value) {
   const item = options.items.find(([key]) => key === value);
   if (!item) fail(`Choisissez : ${options.label.toLowerCase()}.`, 422);
   return { option: item[0], optionLabel: item[1], optionText: `${options.label} : ${item[1]}` };
+}
+
+/* Informations du moyen de réception du client (content/payout-methods.js) : contrôlées ici, quel que soit le
+   navigateur. Jamais de numéro de carte ni de phrase de récupération. */
+const EMAIL_PATTERN = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+const PAYOUT_FIELD_RULES = {
+  phone: [/^\+?[0-9][0-9 ().-]{6,22}$/, "Indiquez le numéro de téléphone (avec l'indicatif du pays si possible)."],
+  holder: [/^[\p{L}][\p{L}\p{M}' .-]{1,99}$/u, "Indiquez le nom et les prénoms (lettres uniquement)."],
+  iban: [/^[A-Z0-9 ]{10,60}$/, "Indiquez le RIB ou l'IBAN (10 à 60 lettres et chiffres)."],
+  address: [/^[A-Za-z0-9:_-]{20,120}$/, "Indiquez l'adresse publique du portefeuille."],
+  network: [/^[\p{L}0-9 ()._-]{2,30}$/u, "Indiquez le réseau (ex. TRC20, BEP20, Bitcoin)."],
+  email: [EMAIL_PATTERN, "Indiquez l'adresse e-mail du compte."],
+  city: [/^[\p{L}][\p{L}\p{M}' .-]{1,59}$/u, "Indiquez la ville de retrait."],
+};
+function readPayoutFields(method, raw) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  const values = {};
+  for (const [key] of PAYOUT_FIELD_TYPES[method.type]) {
+    let value = typeof input[key] === "string" ? input[key].trim().replace(/\s+/g, " ") : "";
+    if (key === "iban") value = value.toUpperCase();
+    if (key === "email") value = value.toLowerCase();
+    const [pattern, message] = PAYOUT_FIELD_RULES[key];
+    if (!pattern.test(value)) fail(message, 422);
+    if (key === "phone") {
+      const digits = value.replace(/\D/g, "").length;
+      if (digits < 8 || digits > 15) fail(message, 422);
+    } else {
+      const reason = sensitiveReason(value);
+      if (reason) fail(reason, 422);
+    }
+    values[key] = value;
+  }
+  return values;
+}
+
+/**
+ * Restriction d'un mandataire : plus d'ajout de compte, niveau bloqué au palier atteint au début de la
+ * restriction. Une sanction (100 jours) n'est jamais raccourcie par une nouvelle vérification.
+ * (Affectations dans cet ordre : chaque expression lit encore l'ancienne valeur de restricted_until.)
+ */
+async function restrictMandataire(connection, mandataireId, { hours = 0, days = 0, reason }) {
+  const interval = days ? `INTERVAL ${Number(days)} DAY` : `INTERVAL ${Number(hours)} HOUR`;
+  await connection.execute(
+    `UPDATE mandataire_profiles
+        SET restricted_level_count = IF(restricted_until > UTC_TIMESTAMP(), restricted_level_count, transactions_count),
+            restriction_reason = CASE WHEN ? = 'sanction' THEN 'sanction'
+                                      WHEN restriction_reason = 'sanction' AND restricted_until > UTC_TIMESTAMP() THEN 'sanction'
+                                      ELSE 'verification' END,
+            restricted_until = GREATEST(COALESCE(restricted_until, UTC_TIMESTAMP()), UTC_TIMESTAMP() + ${interval})
+      WHERE id = ?`,
+    [reason, mandataireId],
+  );
+}
+
+/** Refus justifié : la restriction de vérification est levée (sauf autre vérification en cours ou sanction). */
+async function liftVerificationRestriction(connection, mandataireId) {
+  await connection.execute(
+    `UPDATE mandataire_profiles SET restricted_until = NULL, restriction_reason = NULL, restricted_level_count = NULL
+      WHERE id = ? AND restriction_reason = 'verification'
+        AND NOT EXISTS (SELECT 1 FROM verification_requests v WHERE v.mandataire_id = ? AND v.status = 'open')`,
+    [mandataireId, mandataireId],
+  );
 }
 
 const fileView = (row) => ({
@@ -119,6 +193,9 @@ function notificationFor(type, data, { role, conversation }) {
     receive_info: `${name} vous a envoyé ses coordonnées`,
     proof: `Preuve de paiement reçue de ${name}`,
     proof_status: { validated: "Paiement validé", rejected: "Preuve de paiement rejetée", pending: "Paiement en attente" }[data.status],
+    client_choice: { wait: `${name} attend encore 7 jours`, leave: `${name} a laissé la transaction`, verify: `${name} demande la vérification de votre compte` }[data.choice],
+    refusal_proof: `${name} a envoyé les preuves du refus à l'équipe Mandix`,
+    ask_payout: `${name} vous demande le moyen de réception`,
     credit_proof_request: `${name} demande une preuve de non-crédit`,
     credit_proof: `${name} a envoyé ses preuves`,
     credit_proof_ok: `${name} a vérifié vos preuves`,
@@ -128,7 +205,10 @@ function notificationFor(type, data, { role, conversation }) {
     receipt: data.received ? `${name} a bien reçu l'argent` : `${name} n'a pas encore reçu l'argent`,
   };
   if (!titles[type]) return null;
-  return { title: titles[type], body: eventText({ type, data }), link, cta: "Ouvrir la conversation", type: `message.${type}` };
+  const body = type === "client_choice" && data.choice === "verify"
+    ? `Votre compte est restreint pendant la vérification. Envoyez les preuves du refus dans les ${VERIFICATION_HOURS} heures : sans preuve valable, la restriction dure ${SANCTION_DAYS} jours.`
+    : eventText({ type, data });
+  return { title: titles[type], body, link, cta: "Ouvrir la conversation", type: `message.${type}` };
 }
 
 /**
@@ -181,7 +261,7 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         const currency = typeof data.currency === "string" ? data.currency.toUpperCase() : "";
         if (!EUR_RATES[currency]) fail("Devise non prise en charge.", 422);
         const eur = Math.round((amount / EUR_RATES[currency]) * 100) / 100;
-        const limitEur = limitForTransactions(Number(conversation.transactions_count) || 0);
+        const limitEur = limitForTransactions(Number(conversation.level_transactions) || 0); // niveau bloqué si restreint
         if (limitEur != null && eur > limitEur) {
           fail(`Montant au-delà du plafond du mandataire : environ ${money(eur, "EUR")} pour un plafond de ${money(limitEur, "EUR")} par transaction.`, 422);
         }
@@ -217,59 +297,79 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         break;
       }
       case "proof_status": {
+        // « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 ».
+        // Pendant l'attente (la sienne ou celle choisie par le client), le mandataire peut encore trancher.
         const status = data.status;
-        const allowed = { pending: ["proof_review"], rejected: ["proof_review", "proof_pending"], validated: ["proof_review", "proof_pending", "credit_evidence_requested", "credit_evidence_sent", "under_verification", "disputed"] }[status];
+        const allowed = {
+          pending: ["proof_review"],
+          rejected: ["proof_review", "proof_pending"],
+          validated: ["proof_review", "proof_pending", "client_waiting"],
+        }[status];
         if (!allowed) fail("Décision inconnue.", 422);
         expect("mandataire", ...allowed);
         const proofEventId = await lastProofEvent(transactionId, connection);
         const [proofFile] = proofEventId ? (await connection.execute("SELECT id FROM attachments WHERE event_id = ? LIMIT 1", [proofEventId]))[0] : [];
         if (proofFile) await Attachment.decide(proofFile.id, status, connection);
-        update = status === "validated" ? { status: "awaiting_payout_details", proof_validated_at: "NOW" }
-          : status === "rejected" ? { status: "awaiting_proof", proof_rejections: "INCREMENT" }
-            : { status: "proof_pending", proof_pending_since: "NOW" };
-        payload = { status, proofId: proofEventId ? String(proofEventId) : null };
+        const rejections = Number(tx.proof_rejections || 0) + (status === "rejected" ? 1 : 0);
+        update = status === "validated" ? { status: "proof_validated", proof_validated_at: "NOW" }
+          : status === "rejected"
+            // Au-delà de 2 rejets, le client choisit : Attendre, Je laisse, Faire vérifier ce mandataire.
+            ? { status: rejections > MAX_REJECTIONS ? "rejection_choice" : "awaiting_proof", proof_rejections: "INCREMENT" }
+            : { status: "proof_pending", proof_pending_since: "NOW", pending_reminded_at: null, client_choice_notified_at: null };
+        payload = { status, proofId: proofEventId ? String(proofEventId) : null, rejections };
         break;
       }
-      case "credit_proof_request": {
-        expect("client", "proof_pending");
-        const since = tx.proof_pending_since ? new Date(tx.proof_pending_since).getTime() : Date.now();
-        if (Date.now() < since + PENDING_MAX_DAYS * DAY_MS) fail("Le délai de 7 jours n'est pas encore écoulé.", 409);
-        update = { status: "credit_evidence_requested" };
+      case "client_choice": {
+        // Après plus de 2 rejets : Attendre / Je laisse / Faire vérifier ce mandataire.
+        // À la fin des 7 jours (En attente du mandataire, ou Attendre) : Je laisse / Faire vérifier ce mandataire.
+        const choice = data.choice;
+        if (!["wait", "leave", "verify"].includes(choice)) fail("Choix inconnu.", 422);
+        expect("client", "rejection_choice", "proof_pending", "client_waiting");
+        if (tx.status !== "rejection_choice") {
+          if (choice === "wait") fail("Choisissez : Je laisse, ou Faire vérifier ce mandataire.", 422);
+          const since = tx.proof_pending_since ? new Date(tx.proof_pending_since).getTime() : Date.now();
+          if (Date.now() < since + PENDING_MAX_DAYS * DAY_MS) fail("Le délai de 7 jours n'est pas encore écoulé.", 409);
+        }
+        update = choice === "wait" ? { status: "client_waiting", proof_pending_since: "NOW", pending_reminded_at: null, client_choice_notified_at: null }
+          : choice === "leave" ? { status: "awaiting_review", outcome: "rejected" }
+            : { status: "verification_requested" };
+        payload = { choice };
         break;
       }
-      case "credit_proof": {
-        expect("mandataire", "credit_evidence_requested");
+      case "refusal_proof": {
+        // Vérification demandée par le client : le mandataire envoie les preuves du refus (1 à 5 fichiers).
+        expect("mandataire", "verification_requested");
         const ids = Array.isArray(data.attachmentIds) ? [...new Set(data.attachmentIds.filter(isInt).map(Number))].slice(0, 5) : [];
-        if (!ids.length) fail("Joignez au moins une capture.", 422);
+        if (!ids.length) fail("Joignez au moins une preuve du refus.", 422);
         attachments = await Attachment.findUnlinked(ids, { transactionId, userId: user.id, kind: "credit_evidence" }, connection);
-        if (attachments.length !== ids.length) fail("Une des captures est introuvable : envoyez-les de nouveau.", 422);
-        update = { status: "credit_evidence_sent" };
+        if (attachments.length !== ids.length) fail("Une des preuves est introuvable : envoyez-les de nouveau.", 422);
+        update = { status: "verification_review" };
         payload = { files: attachments.map(fileView) };
         break;
       }
-      case "credit_proof_ok":
-        expect("client", "credit_evidence_sent");
-        update = { status: "proof_pending", proof_pending_since: "NOW" };
-        break;
-      case "verification_request":
-        expect("client", "credit_evidence_sent");
-        update = { status: "under_verification" };
+      case "ask_payout":
+        // Après « Valide : C'est bon ✅ » : « Par quel moyen souhaitez-vous recevoir l'argent ? »
+        expect("mandataire", "proof_validated");
+        update = { status: "awaiting_payout_details" };
         break;
       case "payout_info": {
+        // Pays du client → moyens de réception de ce pays → informations du moyen (Mobile Money : numéro + nom…).
         expect("client", "awaiting_payout_details");
-        const types = await accountTypeIds();
-        const type = typeof data.accountType === "string" ? types.get(data.accountType) : null;
-        if (!type) fail("Choisissez le compte sur lequel recevoir l'argent.", 422);
-        const receive = typeof data.receive === "string" ? data.receive.trim().replace(/\s+/g, " ") : "";
-        if (receive.length < 3 || receive.length > 200) fail("Indiquez les coordonnées de réception (3 à 200 caractères).", 422);
-        const reason = sensitiveReason(receive);
-        if (reason) fail(reason, 422);
-        const option = optionFor(data.accountType, data.option);
+        const country = typeof data.country === "string" ? data.country.toUpperCase() : "";
+        if (!COUNTRIES.some((c) => c.code === country)) fail("Choisissez votre pays.", 422);
+        const method = payoutMethod(country, data.method);
+        if (!method) fail("Choisissez un moyen de réception disponible dans ce pays.", 422);
+        const fields = readPayoutFields(method, data.fields);
+        const receive = PAYOUT_FIELD_TYPES[method.type].map(([key, label]) => `${label} : ${fields[key]}`).join("\n");
         update = {
-          status: "awaiting_transfer", payout_account_type_id: type.id, payout_option: option.option ?? null,
+          status: "awaiting_transfer", payout_method: method.slug, payout_country: country,
+          payout_account_type_id: null, payout_option: null,
           payout_details_enc: Transaction.encryptPayout(transactionId, receive),
         };
-        payload = { accountType: data.accountType, accountName: type.name, receive, ...option };
+        payload = {
+          method: method.slug, methodName: method.name, methodType: method.type,
+          country, countryName: countryName(country), accountName: method.name, receive,
+        };
         break;
       }
       case "sent": {
@@ -278,7 +378,7 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         attachments = await Attachment.findUnlinked([Number(data.attachmentId)], { transactionId, userId: user.id, kind: "transfer_proof" }, connection);
         if (!attachments.length) fail("Capture introuvable : envoyez de nouveau le fichier.", 422);
         update = { status: "awaiting_receipt", transfer_sent_at: "NOW" };
-        payload = { accountName: tx.payout_name, again: Boolean(tx.transfer_sent_at), ...fileView(attachments[0]) };
+        payload = { accountName: tx.payout_name || payoutMethodName(tx.payout_method), again: Boolean(tx.transfer_sent_at), ...fileView(attachments[0]) };
         break;
       }
       case "receipt": {
@@ -286,7 +386,7 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         if (received) expect("client", "awaiting_receipt", "awaiting_transfer");
         else expect("client", "awaiting_receipt");
         if (received && tx.status === "awaiting_transfer" && !tx.transfer_sent_at) fail("Le mandataire n'a pas encore envoyé l'argent.", 409);
-        update = received ? { status: "awaiting_review", receipt_confirmed_at: "NOW" } : { status: "awaiting_transfer" };
+        update = received ? { status: "awaiting_review", outcome: "success", receipt_confirmed_at: "NOW" } : { status: "awaiting_transfer" };
         payload = { received };
         break;
       }
@@ -300,20 +400,27 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
     );
     if (attachments.length) await Attachment.link(attachments.map((a) => Number(a.id)), Number(event.id), connection);
     if (Object.keys(update).length) await Transaction.update(transactionId, update, connection);
-    if (type === "verification_request") {
+    const verify = type === "client_choice" && payload.choice === "verify";
+    if (verify) {
+      // « Faire vérifier ce mandataire » : demande pour l'équipe Mandix, preuves du refus attendues sous 72 h,
+      // et restriction du mandataire pendant la vérification (plus d'ajout de compte, niveau bloqué).
       const reference = `VR-${new Date().getUTCFullYear()}-${String(event.id).padStart(6, "0")}`;
       await connection.execute(
-        `INSERT INTO verification_requests (reference, transaction_id, conversation_id, client_id, mandataire_id, request_event_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO verification_requests (reference, transaction_id, conversation_id, client_id, mandataire_id, request_event_id, evidence_due_at)
+         VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP() + INTERVAL ${VERIFICATION_HOURS} HOUR)`,
         [reference, transactionId, conversation.id, conversation.client_id, conversation.mandataire_id, event.id],
       );
+      await restrictMandataire(connection, conversation.mandataire_id, { hours: VERIFICATION_HOURS, reason: "verification" });
     }
     await Conversation.touch(conversation.id, connection);
-    return { event, status: update.status ?? (type === "request" ? "requested" : tx?.status ?? null) };
+    return { event, status: update.status ?? (type === "request" ? "requested" : tx?.status ?? null), verify };
   });
 
-  if (["request", "verification_request"].includes(type)) {
-    await AuditLog.record({ actorUserId: user.id, actorRole: role, action: `conversation.${type}`, entityType: "conversation", entityId: conversation.id, ip, userAgent });
+  if (type === "request" || result.verify) {
+    await AuditLog.record({
+      actorUserId: user.id, actorRole: role, action: result.verify ? "conversation.verification_request" : "conversation.request",
+      entityType: "conversation", entityId: conversation.id, ip, userAgent,
+    });
   }
   await broadcast(conversation, role, otherUserId, result.event, result.status);
   return { ...result, conversation };
@@ -338,14 +445,17 @@ async function broadcast(conversation, role, otherUserId, event, status) {
   }
   // Compteurs exacts (messages et notifications non lus) pour tous les onglets des deux participants.
   await pushBadges(Number(conversation.client_id), Number(conversation.mandataire_user_id));
-  if (event.type === "verification_request") await pushAdminBadges();
+  // File « Vérifications » de l'équipe : nouvelle demande, ou preuves du refus reçues.
+  if ((event.type === "client_choice" && event.data?.choice === "verify") || event.type === "refusal_proof") await pushAdminBadges();
 }
 
 /* ------------------------------------------------------------------ Évaluation (hors messages) */
 
 /**
- * Évaluation obligatoire du client : clôt la transaction, met à jour la note et le nombre de transactions du
- * mandataire (plafond, certification). Elle n'est pas un message et n'est pas envoyée au mandataire.
+ * Évaluation obligatoire du client, que la transaction soit validée ou rejetée : elle la clôt et met à jour la note
+ * du mandataire. Seules les transactions validées comptent pour le niveau (plafond, certification) ; les rejetées
+ * figurent dans les statistiques du profil. Pas de certification pendant une restriction (niveau bloqué).
+ * L'évaluation n'est pas un message et n'est pas envoyée au mandataire.
  */
 export async function review(user, { conversationId, rating, appreciation }, { ip = null, userAgent = null } = {}) {
   const conversation = await Conversation.findByPublicId(conversationId);
@@ -355,27 +465,30 @@ export async function review(user, { conversationId, rating, appreciation }, { i
   if (!Number.isInteger(note) || note < 1 || note > 5) fail("Choisissez une note de 1 à 5.", 422);
   if (!appreciationsFor(note).some(([key]) => key === appreciation)) fail("Choisissez une appréciation.", 422);
 
-  const transactionId = await withTransaction(async (connection) => {
+  const { transactionId, success } = await withTransaction(async (connection) => {
     const tx = await Transaction.findOpen(conversation.id, connection, { lock: true });
     if (!tx || tx.status !== "awaiting_review") fail("Cette transaction ne peut pas être évaluée.", 409);
+    const ok = tx.outcome !== "rejected";
     await connection.execute(
       "INSERT INTO reviews (transaction_id, client_id, mandataire_id, rating, appreciation) VALUES (?, ?, ?, ?, ?)",
       [tx.id, user.id, conversation.mandataire_id, note, appreciation],
     );
-    await Transaction.update(tx.id, { status: "completed", completed_at: "NOW" }, connection);
+    await Transaction.update(tx.id, { status: ok ? "completed" : "rejected", completed_at: "NOW" }, connection);
     await connection.execute(
       `UPDATE mandataire_profiles
           SET rating_avg = ROUND(((COALESCE(rating_avg, 0) * rating_count) + ?) / (rating_count + 1), 2),
               rating_count = rating_count + 1,
-              transactions_count = transactions_count + 1,
-              certified_at = IF(certified_at IS NULL AND transactions_count >= ?, UTC_TIMESTAMP(), certified_at)
+              transactions_count = transactions_count + ?,
+              rejected_count = rejected_count + ?,
+              certified_at = IF(certified_at IS NULL AND transactions_count >= ?
+                                AND (restricted_until IS NULL OR restricted_until <= UTC_TIMESTAMP()), UTC_TIMESTAMP(), certified_at)
         WHERE id = ?`,
-      [note, CERTIFICATION_THRESHOLD, conversation.mandataire_id],
+      [note, ok ? 1 : 0, ok ? 0 : 1, CERTIFICATION_THRESHOLD, conversation.mandataire_id],
     );
-    return Number(tx.id);
+    return { transactionId: Number(tx.id), success: ok };
   });
-  await AuditLog.record({ actorUserId: user.id, actorRole: "client", action: "transaction.review", entityType: "transaction", entityId: transactionId, metadata: { rating: note }, ip, userAgent });
-  hub.toConversation(conversation.public_id, "transaction:closed", { conversationId: conversation.public_id, status: "completed" });
+  await AuditLog.record({ actorUserId: user.id, actorRole: "client", action: "transaction.review", entityType: "transaction", entityId: transactionId, metadata: { rating: note, outcome: success ? "success" : "rejected" }, ip, userAgent });
+  hub.toConversation(conversation.public_id, "transaction:closed", { conversationId: conversation.public_id, status: success ? "completed" : "rejected" });
   return { transactionId };
 }
 
@@ -384,7 +497,7 @@ export async function review(user, { conversationId, rating, appreciation }, { i
 const UPLOAD_RULES = {
   payment_proof: { role: "client", statuses: ["awaiting_proof"] },
   transfer_proof: { role: "mandataire", statuses: ["awaiting_transfer"] },
-  credit_evidence: { role: "mandataire", statuses: ["credit_evidence_requested"] },
+  credit_evidence: { role: "mandataire", statuses: ["verification_requested"] }, // preuves du refus (vérification)
 };
 
 /** Fichier envoyé avant le message qui le joint : vérifié, chiffré, rattaché à la transaction en cours. */
@@ -428,7 +541,12 @@ const shortWhen = (date) => {
   return new Intl.DateTimeFormat("fr-FR", { timeZone: config.timezone, day: "numeric", month: "short" }).format(d);
 };
 
-const PAYOUT_TYPES = ACCOUNT_TYPES.map((t) => ({ slug: t.slug, name: t.name, logo: t.logo, receiveLabel: t.receiveLabel, receivePlaceholder: t.receivePlaceholder, options: t.options ?? null }));
+/** Moyens de réception proposés au client, par pays (étape « Par quel moyen souhaitez-vous recevoir l'argent ? »). */
+const PAYOUT_CHOICES = {
+  countries: COUNTRIES.map((c) => ({ code: c.code, name: c.name })),
+  methods: Object.fromEntries(COUNTRIES.map((c) => [c.code, payoutMethodsFor(c.code)])),
+  fields: PAYOUT_FIELD_TYPES,
+};
 
 function accountForFlow(account, withReceive) {
   const type = ACCOUNT_TYPES.find((t) => t.slug === account.type) || {};
@@ -484,7 +602,7 @@ export async function chatView(user, { active = null, mandataire = null, basePat
       return null;
     }
     const mandataireId = conversation ? Number(conversation.mandataire_id) : Number(target.id);
-    const transactions = conversation ? Number(conversation.transactions_count) : Number(target.transactions_count);
+    const transactions = conversation ? Number(conversation.level_transactions) : Number(target.level_transactions); // niveau bloqué si restreint
     const accounts = role === "client"
       ? (await MandataireAccount.listPublic(mandataireId)).map((a) => accountForFlow(a, false))
       : (await MandataireAccount.listForOwner(mandataireId)).map((a) => accountForFlow(a, true));
@@ -515,7 +633,10 @@ export async function chatView(user, { active = null, mandataire = null, basePat
         limitLabel: limitLabel(limitEur),
         rates: EUR_RATES,
         pendingMaxDays: PENDING_MAX_DAYS,
-        payoutTypes: PAYOUT_TYPES,
+        payout: PAYOUT_CHOICES,
+        maxRejections: MAX_REJECTIONS,
+        verificationHours: VERIFICATION_HOURS,
+        sanctionDays: SANCTION_DAYS,
         events,
         reviewed: conversation && role === "client" ? await reviewedRequestIds(conversation.id) : [],
         retentionDays: config.messages.retentionDays,
@@ -537,12 +658,12 @@ export async function markRead(user, conversationId, { mandataire = null } = {})
 /* ------------------------------------------------------------------ Ménage : messages éphémères */
 
 /**
- * Efface les messages (et leurs fichiers) des transactions clôturées depuis plus de 3 jours.
+ * Efface les messages (et leurs fichiers) des transactions clôturées (validées, rejetées ou annulées) depuis plus de 10 jours.
  * Les transactions elles-mêmes sont conservées (plafond, statistiques, évaluations), sans coordonnées.
  */
 export async function purgeExpiredMessages() {
   const days = config.messages.retentionDays;
-  const closed = `SELECT id FROM transactions WHERE status IN ('completed','cancelled')
+  const closed = `SELECT id FROM transactions WHERE status IN ('completed','rejected','cancelled')
                    AND COALESCE(completed_at, cancelled_at, updated_at) < UTC_TIMESTAMP() - INTERVAL ${Number(days)} DAY`;
   const [old] = await pool.query(`SELECT id, storage_key FROM attachments WHERE transaction_id IN (${closed})`);
   for (const file of old) await files.deleteFile(file.storage_key);
@@ -556,45 +677,148 @@ export async function purgeExpiredMessages() {
 /* ------------------------------------------------------------------ Vérification par l'équipe Mandix */
 
 /**
- * Décision de l'équipe sur des preuves de non-crédit contestées : preuves authentiques (le délai de 7 jours
- * repart) ou non conformes (litige). Un message « Équipe Mandix » est publié dans la conversation et les deux
- * parties sont notifiées. Si le mandataire a validé le paiement entre-temps, la demande est simplement close.
+ * Clôt une vérification de mandataire, dans une transaction de base de données déjà ouverte :
+ *  - justified : le refus était fondé → la restriction de vérification est levée ;
+ *  - unjustified / no_evidence : refus non justifié, ou aucune preuve sous 72 h → restriction de 100 jours.
+ * La transaction passe à l'évaluation (issue : rejetée) et un message « Équipe Mandix » est publié.
+ */
+async function closeVerification(connection, request, outcome, { adminId = null } = {}) {
+  const justified = outcome === "justified";
+  await connection.execute(
+    "UPDATE verification_requests SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP(), decision_note = ? WHERE id = ?",
+    [justified ? "authentic" : "not_authentic", adminId, outcome === "no_evidence" ? `Aucune preuve du refus dans les ${VERIFICATION_HOURS} heures` : null, request.id],
+  );
+  if (justified) await liftVerificationRestriction(connection, request.mandataire_id);
+  else await restrictMandataire(connection, request.mandataire_id, { days: SANCTION_DAYS, reason: "sanction" });
+
+  const tx = await Transaction.findById(request.transaction_id, connection);
+  if (!tx || !["verification_requested", "verification_review"].includes(tx.status)) return { event: null, status: tx?.status ?? null };
+  await Transaction.update(tx.id, { status: "awaiting_review", outcome: "rejected" }, connection);
+  const event = await ConversationEvent.create(
+    { conversationId: request.conversation_id, transactionId: tx.id, role: "system", userId: null, type: "verification_result", data: { outcome } },
+    connection,
+  );
+  await Conversation.touch(request.conversation_id, connection);
+  return { event, status: "awaiting_review" };
+}
+
+/** Diffusion du résultat d'une vérification : conversation, notifications des deux parties, compteurs. */
+async function announceVerification(conversationRowId, outcome, event, status) {
+  await pushAdminBadges();
+  if (!event) return;
+  const [rows] = await pool.execute("SELECT public_id FROM conversations WHERE id = ?", [conversationRowId]);
+  const conversation = await Conversation.findByPublicId(rows[0]?.public_id);
+  if (!conversation) return;
+  hub.toConversation(conversation.public_id, "message:new", { conversationId: conversation.public_id, event, status });
+  const title = outcome === "justified" ? "Vérification Mandix : refus justifié"
+    : outcome === "no_evidence" ? "Vérification Mandix : aucune preuve reçue" : "Vérification Mandix : refus non justifié";
+  const body = eventText(event);
+  await notifications.notify(Number(conversation.client_id), { type: "message.verification_result", title, body, link: `/client/messages/${conversation.mandataire_slug}`, cta: "Évaluer la transaction" });
+  await notifications.notify(Number(conversation.mandataire_user_id), { type: "message.verification_result", title, body, link: `/mandataire/messages/${conversation.public_id}`, cta: "Ouvrir la conversation" });
+  await pushBadges(Number(conversation.client_id), Number(conversation.mandataire_user_id));
+}
+
+/**
+ * Décision de l'équipe sur la vérification d'un mandataire, après examen des preuves du refus :
+ * « justified » (refus justifié : restriction levée) ou « unjustified » (restriction de 100 jours).
+ * Anciennes valeurs acceptées : authentic → justified, not_authentic → unjustified.
  */
 export async function decideVerification(admin, reference, decision, { ip = null, userAgent = null } = {}) {
-  if (!["authentic", "not_authentic"].includes(decision)) fail("Décision inconnue.", 422);
+  const outcome = { justified: "justified", authentic: "justified", unjustified: "unjustified", not_authentic: "unjustified" }[decision];
+  if (!outcome) fail("Décision inconnue.", 422);
   const result = await withTransaction(async (connection) => {
     const [[request]] = await connection.execute("SELECT * FROM verification_requests WHERE reference = ? LIMIT 1 FOR UPDATE", [String(reference)]);
     if (!request) fail("Demande introuvable.", 404);
     if (request.status !== "open") fail("Cette demande a déjà été traitée.", 409);
-    await connection.execute(
-      "UPDATE verification_requests SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP() WHERE id = ?",
-      [decision, admin.id, request.id],
-    );
-    const tx = await Transaction.findById(request.transaction_id, connection);
-    if (!tx || tx.status !== "under_verification") return { request, event: null, status: tx?.status ?? null };
-    const status = decision === "authentic" ? "proof_pending" : "disputed";
-    await Transaction.update(tx.id, decision === "authentic" ? { status, proof_pending_since: "NOW" } : { status }, connection);
-    const event = await ConversationEvent.create(
-      { conversationId: request.conversation_id, transactionId: tx.id, role: "system", userId: null, type: "verification_result", data: { authentic: decision === "authentic" } },
-      connection,
-    );
-    await Conversation.touch(request.conversation_id, connection);
-    return { request, event, status };
+    return { request, ...(await closeVerification(connection, request, outcome, { adminId: admin.id })) };
   });
+  await AuditLog.record({ actorUserId: admin.id, actorRole: "admin", action: `verification.${outcome}`, entityType: "verification_request", entityId: result.request.id, ip, userAgent });
+  await announceVerification(result.request.conversation_id, outcome, result.event, result.status);
+  return { closedOnly: !result.event };
+}
 
-  await AuditLog.record({ actorUserId: admin.id, actorRole: "admin", action: `verification.${decision}`, entityType: "verification_request", entityId: result.request.id, ip, userAgent });
-  if (!result.event) {
-    await pushAdminBadges(); // demande close : compteur « Vérifications » de l'équipe à jour
-    return { closedOnly: true };
+/* ------------------------------------------------------------------ Échéances (tâche horaire) */
+
+/**
+ * Échéances du parcours, vérifiées toutes les heures (server.js) :
+ *  - paiement « En attente » : rappel quotidien au mandataire (valider ou rejeter) ; à 7 jours, le client est
+ *    prévenu qu'il peut laisser ou faire vérifier le mandataire ;
+ *  - « Attendre » choisi par le client : à 7 jours, le client est prévenu de même ;
+ *  - vérification sans preuve du refus après 72 h : refus non justifié, restriction de 100 jours.
+ */
+export async function runFlowDeadlines() {
+  let reminders = 0;
+  let clientNotices = 0;
+  let expired = 0;
+
+  // 1. Rappel quotidien au mandataire pour chaque paiement en attente.
+  const [pending] = await pool.query(
+    `SELECT t.id, t.conversation_id, t.proof_pending_since, TIMESTAMPDIFF(DAY, t.proof_pending_since, UTC_TIMESTAMP()) AS days
+       FROM transactions t
+      WHERE t.status = 'proof_pending' AND t.proof_pending_since IS NOT NULL
+        AND COALESCE(t.pending_reminded_at, t.proof_pending_since) <= UTC_TIMESTAMP() - INTERVAL 1 DAY`,
+  );
+  for (const t of pending) {
+    const conversation = await conversationByRowId(t.conversation_id);
+    if (!conversation) continue;
+    const days = Number(t.days);
+    const left = PENDING_MAX_DAYS - days;
+    await notifications.notify(Number(conversation.mandataire_user_id), {
+      type: "message.pending_reminder",
+      title: `Paiement en attente depuis ${days} jour${days > 1 ? "s" : ""}`,
+      body: left > 0
+        ? `${conversation.client_pseudo} attend votre décision : Valide : C'est bon ✅ ou Rejeté : C'est pas bon ❌ (encore ${left} jour${left > 1 ? "s" : ""}).`
+        : `Le délai de ${PENDING_MAX_DAYS} jours est dépassé : répondez à ${conversation.client_pseudo} (Valide ou Rejeté).`,
+      link: `/mandataire/messages/${conversation.public_id}`,
+      cta: "Répondre",
+    });
+    await Transaction.update(t.id, { pending_reminded_at: "NOW" }, pool);
+    await pushBadges(Number(conversation.mandataire_user_id));
+    reminders += 1;
   }
-  const [rows] = await pool.execute("SELECT public_id FROM conversations WHERE id = ?", [result.request.conversation_id]);
-  const conversation = await Conversation.findByPublicId(rows[0]?.public_id);
-  hub.toConversation(conversation.public_id, "message:new", { conversationId: conversation.public_id, event: result.event, status: result.status });
-  const title = decision === "authentic" ? "Vérification Mandix : preuves authentiques" : "Vérification Mandix : preuves non conformes";
-  const body = eventText(result.event);
-  await notifications.notify(Number(conversation.client_id), { type: "message.verification_result", title, body, link: `/client/messages/${conversation.mandataire_slug}`, cta: "Ouvrir la conversation" });
-  await notifications.notify(Number(conversation.mandataire_user_id), { type: "message.verification_result", title, body, link: `/mandataire/messages/${conversation.public_id}`, cta: "Ouvrir la conversation" });
-  await pushBadges(Number(conversation.client_id), Number(conversation.mandataire_user_id));
-  await pushAdminBadges();
-  return { closedOnly: false };
+
+  // 2. Fin des 7 jours (En attente, ou Attendre) : le client peut laisser ou faire vérifier le mandataire.
+  const [due] = await pool.query(
+    `SELECT id, conversation_id FROM transactions
+      WHERE status IN ('proof_pending','client_waiting') AND client_choice_notified_at IS NULL
+        AND proof_pending_since <= UTC_TIMESTAMP() - INTERVAL ${PENDING_MAX_DAYS} DAY`,
+  );
+  for (const t of due) {
+    const conversation = await conversationByRowId(t.conversation_id);
+    if (!conversation) continue;
+    await notifications.notify(Number(conversation.client_id), {
+      type: "message.pending_expired",
+      title: `Délai de ${PENDING_MAX_DAYS} jours écoulé`,
+      body: `Le paiement n'est toujours pas validé par ${conversation.mandataire_pseudo}. Choisissez : Je laisse, ou Faire vérifier ce mandataire.`,
+      link: `/client/messages/${conversation.mandataire_slug}`,
+      cta: "Choisir",
+    });
+    await Transaction.update(t.id, { client_choice_notified_at: "NOW" }, pool);
+    await pushBadges(Number(conversation.client_id));
+    clientNotices += 1;
+  }
+
+  // 3. Vérification sans preuve du refus dans les 72 heures : restriction de 100 jours.
+  const [late] = await pool.query(
+    `SELECT v.reference FROM verification_requests v JOIN transactions t ON t.id = v.transaction_id
+      WHERE v.status = 'open' AND t.status = 'verification_requested'
+        AND v.evidence_due_at IS NOT NULL AND v.evidence_due_at <= UTC_TIMESTAMP()`,
+  );
+  for (const { reference } of late) {
+    const result = await withTransaction(async (connection) => {
+      const [[request]] = await connection.execute("SELECT * FROM verification_requests WHERE reference = ? AND status = 'open' LIMIT 1 FOR UPDATE", [reference]);
+      if (!request) return null;
+      return { request, ...(await closeVerification(connection, request, "no_evidence")) };
+    });
+    if (!result) continue;
+    await AuditLog.record({ actorUserId: null, actorRole: "system", action: "verification.no_evidence", entityType: "verification_request", entityId: result.request.id });
+    await announceVerification(result.request.conversation_id, "no_evidence", result.event, result.status);
+    expired += 1;
+  }
+  return { reminders, clientNotices, expired };
+}
+
+async function conversationByRowId(id) {
+  const [rows] = await pool.execute("SELECT public_id FROM conversations WHERE id = ?", [id]);
+  return rows[0] ? Conversation.findByPublicId(rows[0].public_id) : null;
 }

@@ -13,6 +13,7 @@ import * as users from "../services/userService.js";
 import { mandataireStats } from "../services/statsService.js";
 import { LIMIT_TIERS, limitLabelFor } from "../utils/limits.js";
 import { CURRENCIES } from "../content/currencies.js";
+import * as fmt from "../utils/format.js";
 import { CERTIFICATION_THRESHOLD } from "../utils/badges.js";
 import { avatarSvg, defaultAvatarSpec } from "../utils/avatar.js";
 import { notFound } from "../utils/httpError.js";
@@ -86,6 +87,8 @@ router.get("/mandataire/comptes", async (req, res) => {
     countries: COUNTRIES,
     countryName,
     currencies: CURRENCIES,
+    // Restriction en cours (vérification, ou sanction de 100 jours) : ajout de compte impossible, niveau bloqué.
+    restrictedUntil: req.mandataire.restricted ? fmt.formatDateTime(req.mandataire.restricted_until) : null,
   });
 });
 

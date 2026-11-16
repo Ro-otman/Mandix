@@ -1,6 +1,6 @@
 <%#
   Comptes du mandataire : ajout (catalogue des comptes de la plateforme ou « Autre »), modification, suppression.
-  Locaux : accounts, accountTypes, defaultReceive, countries, countryName, currencies (toutes les devises en cours).
+  Locaux : accounts, accountTypes, defaultReceive, countries, countryName, currencies (toutes les devises en cours), restrictedUntil (date de fin de restriction, ou null).
   Ajout : cases à cocher, aucune obligatoire — E-mail / RIB (où recevoir l'argent ; sans eux, le mandataire les
   saisit dans la messagerie au moment de les envoyer) et Prix sur 100 / Pourcentage (tarifs publics, profil). Les coordonnées sont affichées en clair : cet espace n'est accessible
   qu'au mandataire. Valeur longue : défilement horizontal (barre fine).
@@ -17,8 +17,16 @@
     <h1>Mes comptes</h1>
     <p>Vos comptes de réception, publiés sur votre profil dès leur ajout.</p>
   </div>
-  <button class="btn btn--primary" type="button" data-account-add aria-haspopup="dialog"><%- icon('plus', { size: 17 }) %> Ajouter un compte</button>
+  <button class="btn btn--primary" type="button" data-account-add aria-haspopup="dialog" <%= restrictedUntil ? 'disabled' : '' %>><%- icon('plus', { size: 17 }) %> Ajouter un compte</button>
 </div>
+
+<% if (restrictedUntil) { %>
+  <%# Restriction (vérification demandée par un client, ou sanction) : le bouton d'ajout est désactivé %>
+  <div class="alert alert--warning account-restriction" role="status">
+    <%- icon('lock', { size: 18 }) %>
+    <p><strong>Compte restreint jusqu'au <%= restrictedUntil %>.</strong> Vous ne pouvez pas ajouter de compte, et votre niveau reste bloqué.</p>
+  </div>
+<% } %>
 
 <p class="accounts-count"><strong data-accounts-count><%= accounts.length %></strong> compte<%= accounts.length > 1 ? 's' : '' %> enregistré<%= accounts.length > 1 ? 's' : '' %></p>
 

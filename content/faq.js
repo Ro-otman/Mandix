@@ -13,7 +13,7 @@ export const homeFaq = [
   {
     question: "Que se passe-t-il si mon paiement reste « en attente » ?",
     answer:
-      "Un mandataire peut mettre un paiement en attente s'il n'est pas encore crédité, pendant 7 jours au maximum. Au-delà, vous pouvez lui demander des preuves que l'argent n'est pas arrivé. Si ces preuves vous semblent douteuses, demandez une vérification : notre équipe les examine et vous notifie sa décision.",
+      "Un mandataire peut mettre un paiement en attente (« Pas encore bon 🔄 ») pendant 7 jours au maximum ; il reçoit un rappel chaque jour. Au-delà, ou si votre preuve est rejetée plus de 2 fois, vous choisissez : laisser, ou faire vérifier le mandataire. Pendant la vérification, son compte est restreint ; s'il ne justifie pas son refus sous 72 heures, il reste restreint 100 jours.",
   },
   {
     question: "Comment est fixé le plafond d'un mandataire ?",

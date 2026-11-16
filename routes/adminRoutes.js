@@ -69,8 +69,8 @@ router.post("/admin/verifications/:ref/decision", async (req, res) => {
   try {
     const result = await messaging.decideVerification(req.currentUser, req.params.ref, req.body?.decision, ctx(req));
     req.flash("success", result.closedOnly
-      ? "Demande close : le mandataire avait déjà validé le paiement."
-      : "Le client et le mandataire ont été notifiés dans leur conversation.", "Décision enregistrée");
+      ? "Demande close (la transaction n'attendait plus de vérification)."
+      : "Décision publiée dans la conversation : le client et le mandataire sont notifiés.", "Décision enregistrée");
   } catch (error) {
     if (!(error instanceof messaging.MessagingError)) throw error;
     req.flash("danger", error.publicMessage);

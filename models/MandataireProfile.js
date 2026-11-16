@@ -30,11 +30,19 @@ export const MandataireProfile = {
   },
 };
 
-/** Profil du mandataire connecté (identifiant interne, adresse publique, nombre de transactions). */
+/**
+ * Profil du mandataire connecté (identifiant interne, adresse publique, nombre de transactions), avec sa
+ * restriction éventuelle : restricted (bool), restricted_until, level_transactions (niveau bloqué si restreint).
+ */
 MandataireProfile.findByUserId = async function findByUserId(userId) {
   const [rows] = await pool.execute(
-    "SELECT id, slug, country_code, bio, languages, transactions_count, rating_avg, rating_count, verified_at, certified_at FROM mandataire_profiles WHERE user_id = ? LIMIT 1",
+    `SELECT id, slug, country_code, bio, languages, transactions_count, rejected_count, rating_avg, rating_count, verified_at, certified_at,
+            restricted_until, restriction_reason, (restricted_until > UTC_TIMESTAMP()) AS restricted,
+            CASE WHEN restricted_until > UTC_TIMESTAMP()
+                 THEN LEAST(transactions_count, COALESCE(restricted_level_count, transactions_count))
+                 ELSE transactions_count END AS level_transactions
+       FROM mandataire_profiles WHERE user_id = ? LIMIT 1`,
     [userId],
   );
-  return rows[0] ?? null;
+  return rows[0] ? { ...rows[0], restricted: Number(rows[0].restricted) === 1 } : null;
 };

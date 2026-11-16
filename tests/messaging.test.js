@@ -308,16 +308,26 @@ test("parcours guidé complet, validé par le serveur, diffusé en direct", asyn
   assert.deepEqual(Buffer.from(await asClient.arrayBuffer()), PNG);
   assert.equal((await fetch(`${base}/fichiers/${up.data.attachmentId}`, { headers: { cookie: otherJar.header() } })).status, 404, "autre client : refusé");
 
-  // 6. Validation, compte de réception (numéro de carte refusé), envoi avec capture, réception, évaluation.
-  assert.ok((await request(proSocket, "message:send", { conversationId, type: "proof_status", data: { status: "validated" } })).ok);
-  assert.match((await request(clientSocket, "message:send", { conversationId, type: "payout_info", data: { accountType: "wise", receive: "4111111111111111" } })).error, /carte/);
-  assert.ok((await request(clientSocket, "message:send", { conversationId, type: "payout_info", data: { accountType: "wise", receive: "kofi@exemple.com" } })).ok);
+  // 6. « Valide : C'est bon ✅ », puis « Par quel moyen souhaitez-vous recevoir l'argent ? », pays + moyen + informations.
+  const validated = await request(proSocket, "message:send", { conversationId, type: "proof_status", data: { status: "validated" } });
+  assert.ok(validated.ok);
+  const payout = (data) => request(clientSocket, "message:send", { conversationId, type: "payout_info", data });
+  const momo = { country: "BJ", method: "mtn_momo", fields: { phone: "+229 97 00 00 00", holder: "Kofi Mensah" } };
+  assert.match((await payout(momo)).error, /plus d'actualité/, "le mandataire demande d'abord le moyen de réception");
+  assert.ok((await request(proSocket, "message:send", { conversationId, type: "ask_payout" })).ok);
+  assert.match((await payout({ ...momo, method: "wave" })).error, /disponible dans ce pays/, "Wave n'est pas proposé au Bénin");
+  assert.match((await payout({ ...momo, fields: { phone: "+229 97 00 00 00" } })).error, /nom et les prénoms/);
+  assert.match((await payout({ country: "BJ", method: "virement", fields: { iban: "4111111111111111", holder: "Kofi Mensah" } })).error, /carte/);
+  const given = await payout(momo);
+  assert.ok(given.ok, given.error);
+  assert.equal(given.event.data.methodName, "MTN Mobile Money");
+  assert.equal(given.event.data.receive, ["Numéro de téléphone : +229 97 00 00 00", "Nom et prénoms : Kofi Mensah"].join(String.fromCharCode(10)));
   const proPage = await http(proJar, "GET", `/mandataire/messages/${conversationId}`);
   const transfer = await http(proJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("transfer_proof", csrfOf(proPage.text)));
   assert.equal(transfer.status, 201);
   const sent = await request(proSocket, "message:send", { conversationId, type: "sent", data: { attachmentId: transfer.data.attachmentId } });
   assert.ok(sent.ok);
-  assert.equal(sent.event.data.accountName, "Wise");
+  assert.equal(sent.event.data.accountName, "MTN Mobile Money");
   assert.ok((await request(clientSocket, "message:send", { conversationId, type: "receipt", data: { received: true } })).ok);
   assert.equal((await request(clientSocket, "review:submit", { conversationId, rating: 5, appreciation: "decevant" })).ok, false, "appréciation incohérente refusée");
   assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 5, appreciation: "rapide_fiable" })).ok);
@@ -328,7 +338,7 @@ test("parcours guidé complet, validé par le serveur, diffusé en direct", asyn
   assert.equal(profile.transactions_count, 1);
   assert.equal(Number(profile.rating_avg), 5);
   // L'évaluation n'est pas un message
-  const [[reviewEvents]] = await db.query("SELECT COUNT(*) AS n FROM conversation_events WHERE event_type NOT IN ('request','ask_amount','amount','receive_info','proof','proof_status','payout_info','sent','receipt')");
+  const [[reviewEvents]] = await db.query("SELECT COUNT(*) AS n FROM conversation_events WHERE event_type NOT IN ('request','ask_amount','amount','receive_info','proof','proof_status','ask_payout','payout_info','sent','receipt')");
   assert.equal(reviewEvents.n, 0);
 });
 
@@ -337,7 +347,7 @@ test("messages chiffrés en base et notifications enregistrées", async () => {
   assert.ok(events.length >= 9);
   for (const e of events) {
     const raw = e.payload_enc.toString("latin1");
-    assert.ok(!raw.includes("afi.paiements") && !raw.includes("kofi@exemple.com") && !raw.includes("180"), "contenu jamais en clair");
+    assert.ok(!raw.includes("afi.paiements") && !raw.includes("Kofi Mensah") && !raw.includes("180"), "contenu jamais en clair");
   }
   const page = await http(clientJar, "GET", "/client/notifications");
   assert.equal(page.status, 200);
@@ -347,12 +357,14 @@ test("messages chiffrés en base et notifications enregistrées", async () => {
   assert.equal(read.data.unread, 0);
 });
 
-test("messagerie éphémère : effacement 3 jours après la clôture, transaction conservée", async () => {
+test("messagerie éphémère : effacement 10 jours après la clôture, transaction conservée", async () => {
   const { purgeExpiredMessages } = await import("../services/messagingService.js");
-  // Transaction close depuis 1 jour : rien n'est effacé.
+  // Transaction close depuis moins de 10 jours : rien n'est effacé.
   assert.equal((await purgeExpiredMessages()).messages, 0);
+  await db.query("UPDATE transactions SET completed_at = UTC_TIMESTAMP() - INTERVAL 9 DAY");
+  assert.equal((await purgeExpiredMessages()).messages, 0, "9 jours après la clôture : messages conservés");
   const [files] = await db.query("SELECT storage_key FROM attachments");
-  await db.query("UPDATE transactions SET completed_at = UTC_TIMESTAMP() - INTERVAL 4 DAY");
+  await db.query("UPDATE transactions SET completed_at = UTC_TIMESTAMP() - INTERVAL 11 DAY");
   const purged = await purgeExpiredMessages();
   assert.ok(purged.messages >= 9);
   assert.equal(purged.files, 2);
@@ -366,8 +378,9 @@ test("messagerie éphémère : effacement 3 jours après la clôture, transactio
   assert.equal(tx.payout_details_enc, null, "coordonnées du client effacées");
 });
 
-test("paiement en attente : 7 jours, preuves de non-crédit, vérification par l'équipe Mandix", async () => {
+test("en attente 7 jours, rappel quotidien, vérification du mandataire, restriction de 100 jours, transaction rejetée", async () => {
   const { hashPassword } = await import("../utils/password.js");
+  const { runFlowDeadlines } = await import("../services/messagingService.js");
   const [a] = await db.execute(
     "INSERT INTO users (public_id, role, email, first_name, last_name, password_hash, status, email_verified_at) VALUES (UUID(), 'admin', 'admin@exemple.com', 'Rachida', 'Adjovi', ?, 'active', UTC_TIMESTAMP())",
     [await hashPassword(PASSWORD)],
@@ -375,7 +388,7 @@ test("paiement en attente : 7 jours, preuves de non-crédit, vérification par l
   await db.execute("INSERT INTO admin_profiles (user_id, admin_role) VALUES (?, 'super_admin')", [a.insertId]);
   const send = (socket, type, data = {}) => request(socket, "message:send", { conversationId, type, data });
 
-  // Nouvelle transaction jusqu'à la preuve, mise « En attente » par le mandataire.
+  // Nouvelle transaction jusqu'à la preuve.
   // Compte Wise ajouté sans coordonnées : le mandataire les saisit dans la messagerie (contrôlées par le serveur).
   assert.ok((await send(clientSocket, "request", { accountId: bareAccountId })).ok);
   assert.ok((await send(proSocket, "ask_amount")).ok);
@@ -388,40 +401,129 @@ test("paiement en attente : 7 jours, preuves de non-crédit, vérification par l
   const page = await http(clientJar, "GET", "/client/messages/afipro");
   const proof = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", csrfOf(page.text)));
   assert.ok((await send(clientSocket, "proof", { attachmentId: proof.data.attachmentId })).ok);
-  assert.ok((await send(proSocket, "proof_status", { status: "pending" })).ok);
 
-  // Avant 7 jours : demande de preuve refusée ; après : acceptée.
-  assert.match((await send(clientSocket, "credit_proof_request")).error, /7 jours/);
+  // « En attente : Pas encore bon 🔄 » : avant 7 jours, le client ne peut ni laisser ni faire vérifier.
+  const pending = await send(proSocket, "proof_status", { status: "pending" });
+  assert.ok(pending.ok);
+  assert.match((await send(clientSocket, "client_choice", { choice: "verify" })).error, /7 jours/);
+
+  // Rappel quotidien au mandataire (un par jour).
+  await db.query("UPDATE transactions SET proof_pending_since = UTC_TIMESTAMP() - INTERVAL 2 DAY WHERE status = 'proof_pending'");
+  assert.equal((await runFlowDeadlines()).reminders, 1);
+  assert.equal((await runFlowDeadlines()).reminders, 0, "un seul rappel par jour");
+  const [[reminder]] = await db.query("SELECT title FROM notifications WHERE type = 'message.pending_reminder' ORDER BY id DESC LIMIT 1");
+  assert.match(reminder.title, /Paiement en attente depuis 2 jours/);
+
+  // Fin des 7 jours : le client est prévenu, puis choisit « Faire vérifier ce mandataire » (Attendre n'est plus proposé).
   await db.query("UPDATE transactions SET proof_pending_since = UTC_TIMESTAMP() - INTERVAL 8 DAY WHERE status = 'proof_pending'");
-  assert.ok((await send(clientSocket, "credit_proof_request")).ok);
+  assert.equal((await runFlowDeadlines()).clientNotices, 1);
+  assert.match((await send(clientSocket, "client_choice", { choice: "wait" })).error, /Je laisse/);
+  assert.ok((await send(clientSocket, "client_choice", { choice: "verify" })).ok);
+  const [[vr]] = await db.query("SELECT reference, status, evidence_due_at > UTC_TIMESTAMP() + INTERVAL 71 HOUR AS due72 FROM verification_requests ORDER BY id DESC LIMIT 1");
+  assert.equal(vr.status, "open");
+  assert.equal(Number(vr.due72), 1, "preuves attendues sous 72 heures");
 
+  // Mandataire restreint pendant la vérification : ajout de compte refusé, niveau bloqué.
+  const [[restricted]] = await db.query("SELECT restricted_until > UTC_TIMESTAMP() AS active, restriction_reason, restricted_level_count, transactions_count FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(Number(restricted.active), 1);
+  assert.equal(restricted.restriction_reason, "verification");
+  assert.equal(Number(restricted.restricted_level_count), Number(restricted.transactions_count), "niveau bloqué au palier actuel");
+  const comptes = await http(proJar, "GET", "/mandataire/comptes");
+  assert.match(comptes.text, /Compte restreint jusqu/);
+  const refusedAdd = await http(proJar, "POST", "/mandataire/comptes", { json: { type: "paypal", country: "FR", currency: "EUR" }, headers: { "x-csrf-token": csrfOf(comptes.text) } });
+  assert.equal(refusedAdd.status, 422);
+  assert.match(refusedAdd.data.error, /restreint/);
+
+  // Le mandataire envoie les preuves du refus ; l'équipe les consulte et décide : refus non justifié → 100 jours.
   const proPage = await http(proJar, "GET", `/mandataire/messages/${conversationId}`);
   const evidence = await http(proJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("credit_evidence", csrfOf(proPage.text)));
   assert.equal(evidence.status, 201);
-  assert.ok((await send(proSocket, "credit_proof", { attachmentIds: [evidence.data.attachmentId] })).ok);
-  assert.ok((await send(clientSocket, "verification_request")).ok);
-  const [[vr]] = await db.query("SELECT reference, status FROM verification_requests ORDER BY id DESC LIMIT 1");
-  assert.equal(vr.status, "open");
-
-  // L'équipe consulte les preuves (fichier lisible par l'administration) et décide.
+  assert.ok((await send(proSocket, "refusal_proof", { attachmentIds: [evidence.data.attachmentId] })).ok);
   const adminJar = await login("admin@exemple.com", PASSWORD);
   const queue = await http(adminJar, "GET", "/admin/verifications");
   assert.equal(queue.status, 200);
   assert.match(queue.text, new RegExp(vr.reference));
-  assert.equal((await fetch(`${base}/fichiers/${evidence.data.attachmentId}`, { headers: { cookie: adminJar.header() } })).status, 200);
+  assert.match(queue.text, /Refus non justifié : restreindre 100 jours/);
+  assert.equal((await fetch(`${base}/fichiers/${evidence.data.attachmentId}?espace=admin`, { headers: { cookie: adminJar.header() } })).status, 200);
   const clientHears = nextEvent(clientSocket, "message:new");
-  const decision = await http(adminJar, "POST", `/admin/verifications/${vr.reference}/decision`, { form: { _csrf: csrfOf(queue.text), decision: "authentic" } });
+  const decision = await http(adminJar, "POST", `/admin/verifications/${vr.reference}/decision`, { form: { _csrf: csrfOf(queue.text), decision: "unjustified" } });
   assert.equal(decision.status, 303);
   const live = await clientHears;
   assert.equal(live.event.from, "system");
   assert.equal(live.event.type, "verification_result");
-  assert.equal(live.event.data.authentic, true);
-  const [[tx]] = await db.query("SELECT status, proof_pending_since > UTC_TIMESTAMP() - INTERVAL 1 MINUTE AS restarted FROM transactions ORDER BY id DESC LIMIT 1");
-  assert.equal(tx.status, "proof_pending");
-  assert.equal(Number(tx.restarted), 1, "le délai de 7 jours repart");
+  assert.equal(live.event.data.outcome, "unjustified");
+  const [[sanction]] = await db.query("SELECT restriction_reason, DATEDIFF(restricted_until, UTC_TIMESTAMP()) AS days FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(sanction.restriction_reason, "sanction");
+  assert.ok(Number(sanction.days) >= 99, "restreint 100 jours");
   // Décision unique
-  const again = await http(adminJar, "POST", `/admin/verifications/${vr.reference}/decision`, { form: { _csrf: csrfOf(queue.text), decision: "not_authentic" } });
-  assert.equal(again.status, 303);
+  await http(adminJar, "POST", `/admin/verifications/${vr.reference}/decision`, { form: { _csrf: csrfOf(queue.text), decision: "justified" } });
   const [[closed]] = await db.query("SELECT status FROM verification_requests WHERE reference = ?", [vr.reference]);
-  assert.equal(closed.status, "authentic");
+  assert.equal(closed.status, "not_authentic");
+
+  // Transaction rejetée : le client l'évalue ; elle compte dans les rejetées, pas pour le niveau.
+  const [[before]] = await db.query("SELECT transactions_count FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 1, appreciation: "decevant" })).ok);
+  const [[after]] = await db.query("SELECT transactions_count, rejected_count FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(after.transactions_count, before.transactions_count);
+  assert.equal(after.rejected_count, 1);
+  const [[tx]] = await db.query("SELECT status, outcome FROM transactions ORDER BY id DESC LIMIT 1");
+  assert.deepEqual([tx.status, tx.outcome], ["rejected", "rejected"]);
+  const profile = await http(new CookieJar(), "GET", "/mandataires/afipro");
+  assert.match(profile.text, /<dt>Réussies<\/dt>\s*<dd>1<\/dd>/);
+  assert.match(profile.text, /<dt>Rejetées<\/dt>\s*<dd>1<\/dd>/);
+});
+
+test("plus de 2 rejets : Attendre puis Je laisse ; vérification sans preuve sous 72 h", async () => {
+  const { runFlowDeadlines } = await import("../services/messagingService.js");
+  const send = (socket, type, data = {}) => request(socket, "message:send", { conversationId, type, data });
+  const page = await http(clientJar, "GET", "/client/messages/afipro");
+  const csrf = csrfOf(page.text);
+  const status = async () => (await db.query("SELECT status FROM transactions ORDER BY id DESC LIMIT 1"))[0][0].status;
+
+  /** Nouvelle transaction sur le compte PayPal, puis 3 preuves rejetées. */
+  async function threeRejections() {
+    assert.ok((await send(clientSocket, "request", { accountId })).ok);
+    assert.ok((await send(proSocket, "ask_amount")).ok);
+    assert.ok((await send(clientSocket, "amount", { amount: 50, currency: "EUR" })).ok);
+    assert.ok((await send(proSocket, "receive_info", { option: "friends_family" })).ok);
+    for (let i = 1; i <= 3; i += 1) {
+      const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", csrf));
+      assert.ok((await send(clientSocket, "proof", { attachmentId: up.data.attachmentId })).ok);
+      const rejected = await send(proSocket, "proof_status", { status: "rejected" });
+      assert.ok(rejected.ok, rejected.error);
+      assert.equal(rejected.event.data.rejections, i);
+      assert.equal(await status(), i <= 2 ? "awaiting_proof" : "rejection_choice", `après le rejet n° ${i}`);
+    }
+  }
+
+  // 1. Attendre (7 jours) puis Je laisse ; le mandataire pouvait encore valider pendant l'attente.
+  await threeRejections();
+  assert.ok((await send(clientSocket, "client_choice", { choice: "wait" })).ok);
+  assert.equal(await status(), "client_waiting");
+  assert.match((await send(clientSocket, "client_choice", { choice: "leave" })).error, /7 jours/);
+  await db.query("UPDATE transactions SET proof_pending_since = UTC_TIMESTAMP() - INTERVAL 8 DAY WHERE status = 'client_waiting'");
+  assert.equal((await runFlowDeadlines()).clientNotices, 1, "client prévenu à la fin des 7 jours");
+  assert.ok((await send(clientSocket, "client_choice", { choice: "leave" })).ok);
+  assert.equal(await status(), "awaiting_review");
+  assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 2, appreciation: "trop_lent" })).ok);
+  const [[afterLeave]] = await db.query("SELECT rejected_count FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(afterLeave.rejected_count, 2);
+
+  // 2. Faire vérifier ce mandataire, sans preuve du refus sous 72 h : restriction de 100 jours automatique.
+  await threeRejections();
+  assert.ok((await send(clientSocket, "client_choice", { choice: "verify" })).ok);
+  assert.equal(await status(), "verification_requested");
+  await db.query("UPDATE verification_requests SET evidence_due_at = UTC_TIMESTAMP() - INTERVAL 1 HOUR WHERE status = 'open'");
+  const clientHears = nextEvent(clientSocket, "message:new");
+  assert.equal((await runFlowDeadlines()).expired, 1);
+  const live = await clientHears;
+  assert.equal(live.event.data.outcome, "no_evidence");
+  const [[vr]] = await db.query("SELECT status, decision_note FROM verification_requests ORDER BY id DESC LIMIT 1");
+  assert.equal(vr.status, "not_authentic");
+  assert.match(vr.decision_note, /72 heures/);
+  assert.equal(await status(), "awaiting_review");
+  assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 1, appreciation: "communication" })).ok);
+  const [[final]] = await db.query("SELECT rejected_count, restriction_reason FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(final.rejected_count, 3);
+  assert.equal(final.restriction_reason, "sanction");
 });

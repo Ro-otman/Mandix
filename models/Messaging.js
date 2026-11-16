@@ -12,9 +12,18 @@ export const payoutContext = (transactionId) => `payout:${transactionId}`;
 
 /* ------------------------------------------------------------------ Conversations */
 
+/**
+ * Transactions qui comptent pour le niveau (plafond) : pendant une restriction, le niveau reste bloqué au palier
+ * atteint au début de la restriction, quel que soit le nombre de transactions réussies ensuite.
+ */
+export const LEVEL_TRANSACTIONS_SQL = `CASE WHEN mp.restricted_until > UTC_TIMESTAMP()
+       THEN LEAST(mp.transactions_count, COALESCE(mp.restricted_level_count, mp.transactions_count))
+       ELSE mp.transactions_count END`;
+
 const CONVERSATION = `SELECT c.id, c.public_id, c.client_id, c.mandataire_id, c.last_event_at, c.client_read_at, c.mandataire_read_at,
                              c.created_at, u.pseudo AS client_pseudo, u.public_id AS client_public_id, u.last_seen_at AS client_last_seen,
                              mp.slug AS mandataire_slug, mp.user_id AS mandataire_user_id, mp.transactions_count, mp.verified_at,
+                             ${LEVEL_TRANSACTIONS_SQL} AS level_transactions,
                              mu.pseudo AS mandataire_pseudo, mu.last_seen_at AS mandataire_last_seen
                         FROM conversations c
                         JOIN users u ON u.id = c.client_id
@@ -82,7 +91,7 @@ export const Transaction = {
   /** Transaction en cours (non terminée, non annulée) d'une conversation ; verrouillée si connexion de transaction. */
   async findOpen(conversationId, connection = pool, { lock = false } = {}) {
     const [rows] = await connection.execute(
-      `${TRANSACTION} WHERE t.conversation_id = ? AND t.status NOT IN ('completed','cancelled') ORDER BY t.id DESC LIMIT 1${lock ? " FOR UPDATE" : ""}`,
+      `${TRANSACTION} WHERE t.conversation_id = ? AND t.status NOT IN ('completed','rejected','cancelled') ORDER BY t.id DESC LIMIT 1${lock ? " FOR UPDATE" : ""}`,
       [conversationId],
     );
     return rows[0] ?? null;
@@ -102,8 +111,9 @@ export const Transaction = {
   },
   /** Mise à jour de colonnes autorisées uniquement (liste blanche). */
   async update(id, fields, connection) {
-    const ALLOWED = new Set(["status", "currency", "amount", "amount_eur", "eur_rate", "limit_eur", "receive_option", "payout_account_type_id",
-      "payout_details_enc", "payout_option", "proof_pending_since", "proof_validated_at", "transfer_sent_at", "receipt_confirmed_at",
+    const ALLOWED = new Set(["status", "outcome", "currency", "amount", "amount_eur", "eur_rate", "limit_eur", "receive_option", "payout_account_type_id",
+      "payout_details_enc", "payout_option", "payout_method", "payout_country", "proof_pending_since", "pending_reminded_at",
+      "client_choice_notified_at", "proof_validated_at", "transfer_sent_at", "receipt_confirmed_at",
       "completed_at", "cancelled_at", "first_response_at", "proof_rejections"]);
     const entries = Object.entries(fields).filter(([k]) => ALLOWED.has(k));
     if (!entries.length) return;

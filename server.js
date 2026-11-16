@@ -4,7 +4,7 @@ import { checkDatabaseConnection } from "./config/database.js";
 import { purgeExpiredSecurityData } from "./services/authService.js";
 import { isMailConfigured, verifyMailer } from "./config/mailer.js";
 import { createRealtime } from "./realtime/io.js";
-import { purgeExpiredMessages } from "./services/messagingService.js";
+import { purgeExpiredMessages, runFlowDeadlines } from "./services/messagingService.js";
 import { purgeOld as purgeOldNotifications } from "./services/notificationService.js";
 
 const server = app.listen(config.port, async () => {
@@ -24,10 +24,11 @@ const server = app.listen(config.port, async () => {
 // Temps réel (messagerie, notifications) sur le même serveur HTTP.
 createRealtime(server);
 
-// Ménage horaire : jetons expirés, sessions terminées, anciennes tentatives de connexion.
+// Tâche horaire : ménage (jetons expirés, sessions terminées, messages éphémères de plus de 10 jours) et échéances
+// du parcours (rappel quotidien d'un paiement en attente, fin des 7 jours, vérification sans preuve après 72 h).
 const purge = () =>
-  Promise.all([purgeExpiredSecurityData(), purgeExpiredMessages(), purgeOldNotifications()])
-    .catch((error) => console.warn(`Ménage impossible (${error.code || error.message}).`));
+  Promise.all([purgeExpiredSecurityData(), purgeExpiredMessages(), purgeOldNotifications(), runFlowDeadlines()])
+    .catch((error) => console.warn(`Tâche horaire impossible (${error.code || error.message}).`));
 setTimeout(purge, 30_000).unref();
 setInterval(purge, 60 * 60 * 1000).unref();
 

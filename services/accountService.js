@@ -2,6 +2,7 @@
  * Comptes de paiement d'un mandataire : ajout (publié aussitôt, coordonnées chiffrées), liste, retrait.
  * Toutes les entrées sont revalidées ici, quelle que soit la vérification faite par le navigateur.
  */
+import config from "../config/app.js";
 import { COUNTRIES } from "../content/countries.js";
 import { CURRENCY_CODES } from "../content/currencies.js";
 import { MandataireAccount, accountTypeIds } from "../models/MandataireAccount.js";
@@ -90,6 +91,11 @@ export function readAccountOffer(input = {}) {
  * @returns {Promise<{ok: true, account: object} | {ok: false, errors: Record<string, string>}>}
  */
 export async function addAccount(mandataire, input, { user, ip, userAgent }) {
+  // Restriction (vérification demandée par un client, ou sanction de 100 jours) : plus d'ajout de compte.
+  if (mandataire.restricted) {
+    const until = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short", timeZone: config.timezone }).format(new Date(mandataire.restricted_until));
+    return { ok: false, errors: { type: `Votre compte est restreint jusqu'au ${until} : vous ne pouvez pas ajouter de compte.` } };
+  }
   const types = await accountTypeIds();
   const type = typeof input.type === "string" ? types.get(input.type) : null;
   const offer = readAccountOffer(input);

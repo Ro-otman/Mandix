@@ -1,20 +1,21 @@
 <%#
-  Vérifications : preuves de non-crédit contestées par un client. Un paiement resté « En attente » plus de
-  7 jours permet au client de demander au mandataire une preuve que l'argent n'est pas crédité ; s'il conteste
-  ces preuves, l'équipe Mandix les vérifie ici puis notifie le client (authentiques ou non conformes).
+  Vérifications de mandataires demandées par les clients (« Faire vérifier ce mandataire »), après plus de 2 preuves
+  rejetées ou 7 jours d'attente. Le mandataire est restreint et envoie les preuves du refus sous 72 h.
+  Refus justifié : la restriction est levée. Refus non justifié : restriction de 100 jours (appliquée aussi,
+  automatiquement, si aucune preuve n'arrive sous 72 h). Dans tous les cas, la transaction est close (rejetée).
   Locaux : requests (services/adminService.js → listVerifications), pendingMaxDays.
   La décision est publiée dans la conversation (message « Équipe Mandix ») et notifiée au client et au mandataire.
 %>
 <%
   const STATES = {
-    open: { label: 'À vérifier', tone: 'warning', icon: 'clock' },
-    authentic: { label: 'Preuves authentiques', tone: 'success', icon: 'circle-check' },
-    not_authentic: { label: 'Preuves non conformes', tone: 'danger', icon: 'circle-x' },
+    open: { label: 'À décider', tone: 'warning', icon: 'clock' },
+    authentic: { label: 'Refus justifié', tone: 'success', icon: 'circle-check' },
+    not_authentic: { label: 'Refus non justifié · 100 jours', tone: 'danger', icon: 'circle-x' },
   };
   const daysSince = (d) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 864e5));
   const open = requests.filter((r) => r.status === 'open').length;
 %>
-<%- include('../partials/dash/page-head', { heading: 'Vérifications', sub: `Preuves contestées par les clients : un paiement en attente depuis plus de ${pendingMaxDays} jours, des captures du mandataire jugées douteuses. Vérifiez-les, le client est notifié de votre décision.` }) %>
+<%- include('../partials/dash/page-head', { heading: 'Vérifications', sub: 'Mandataires que des clients font vérifier : examinez les preuves du refus. Refus justifié : la restriction est levée ; non justifié : compte restreint 100 jours.' }) %>
 
 <p class="verif-count"><strong data-verif-open><%= open %></strong> demande<%= open > 1 ? 's' : '' %> à traiter</p>
 
@@ -33,11 +34,15 @@
       <dl class="verif-card__facts">
         <div><dt>Compte</dt><dd><span class="stats-account"><%- serviceLogo(r.type, { size: 18 }) %> <%= r.account %></span></dd></div>
         <div><dt>Montant</dt><dd><%= r.amount %></dd></div>
-        <div><dt>En attente depuis</dt><dd><%= fmt.formatDate(r.pendingSince) %> <span class="text-muted">(<%= daysSince(r.pendingSince) %> jours)</span></dd></div>
+        <div><dt>Preuves rejetées</dt><dd><%= r.rejections %></dd></div>
         <div><dt>Vérification demandée</dt><dd><%= fmt.formatDateTime(r.requestedAt) %></dd></div>
+        <% if (r.status === 'open' && r.evidenceDueAt) { %><div><dt>Preuves attendues avant</dt><dd><%= fmt.formatDateTime(r.evidenceDueAt) %></dd></div><% } %>
       </dl>
       <div class="verif-card__evidence">
-        <p class="verif-card__role">Preuves envoyées par le mandataire</p>
+        <p class="verif-card__role">Preuves du refus envoyées par le mandataire</p>
+        <% if (!r.evidence.length) { %>
+          <p class="text-muted"><%= r.status === 'open' ? 'En attente des preuves du mandataire. Sans preuve dans les 72 heures, la restriction de 100 jours s’applique automatiquement.' : (r.note || 'Aucune preuve envoyée.') %></p>
+        <% } %>
         <ul class="verif-files">
           <% r.evidence.forEach((f) => { %>
             <li>
@@ -51,14 +56,14 @@
           <% }) %>
         </ul>
       </div>
-      <footer class="verif-card__foot" data-verif-actions <%= r.status === 'open' ? '' : 'hidden' %>>
-        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Les preuves de <%= r.pro %> sont authentiques : le paiement n'est pas encore crédité. <%= r.client %> sera notifié et le délai de <%= pendingMaxDays %> jours repartira." data-confirm-title="Confirmer : preuves authentiques" data-confirm-label="Confirmer">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="authentic">
-          <button class="btn btn--success" type="submit"><%- icon('circle-check', { size: 16 }) %> Preuves authentiques</button>
+      <footer class="verif-card__foot" data-verif-actions <%= r.status === 'open' && r.evidence.length ? '' : 'hidden' %>>
+        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Le refus de <%= r.pro %> est justifié : sa restriction est levée. La transaction est close, <%= r.client %> est invité à l'évaluer." data-confirm-title="Confirmer : refus justifié" data-confirm-label="Confirmer">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="justified">
+          <button class="btn btn--success" type="submit"><%- icon('circle-check', { size: 16 }) %> Refus justifié : lever la restriction</button>
         </form>
-        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Les preuves de <%= r.pro %> ne sont pas conformes. <%= r.client %> sera notifié et le dossier passera en litige." data-confirm-title="Confirmer : preuves non conformes" data-confirm-label="Confirmer" data-confirm-tone="danger">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="not_authentic">
-          <button class="btn btn--danger" type="submit"><%- icon('circle-x', { size: 16 }) %> Preuves non conformes</button>
+        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Le refus de <%= r.pro %> n'est pas justifié : son compte est restreint pendant 100 jours (plus d'ajout de compte, niveau bloqué). La transaction est close." data-confirm-title="Confirmer : refus non justifié" data-confirm-label="Confirmer" data-confirm-tone="danger">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="unjustified">
+          <button class="btn btn--danger" type="submit"><%- icon('circle-x', { size: 16 }) %> Refus non justifié : restreindre 100 jours</button>
         </form>
       </footer>
       <% if (r.decidedAt) { %><p class="verif-card__decided">Décision du <%= fmt.formatDateTime(r.decidedAt) %> · client notifié</p><% } %>

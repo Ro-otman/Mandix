@@ -23,7 +23,9 @@ function toMandataire(row, accounts = [], reviews = []) {
     languages: parseLanguages(row.languages),
     rating: row.rating_avg != null ? Number(row.rating_avg) : null,
     reviewsCount: Number(row.rating_count) || 0,
-    transactions: Number(row.transactions_count) || 0,
+    transactions: Number(row.transactions_count) || 0, // transactions réussies
+    rejected: Number(row.rejected_count) || 0, // transactions rejetées (statistiques du profil)
+    levelTransactions: Number(row.level_transactions ?? row.transactions_count) || 0, // niveau bloqué si restreint
     verified: Number(row.is_verified) === 1, // badge bleu : seulement si un contrôle a réellement été fait
     joinedAt: row.member_since,
     lastSeenAt: row.last_seen_at,
@@ -50,7 +52,7 @@ async function accountsByMandataire(ids) {
 }
 
 const SELECT = `SELECT id, slug, pseudo, country_code, bio, languages, rating_avg, rating_count, transactions_count,
-                       is_verified, last_seen_at, member_since FROM v_public_mandataires`;
+                       rejected_count, level_transactions, is_verified, last_seen_at, member_since FROM v_public_mandataires`;
 
 export const PublicMandataire = {
   /** Mandataires publics (filtrés ensuite par le service de recherche). */
