@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS mandataire_profiles (
   CONSTRAINT fk_mandataire_profiles_user     FOREIGN KEY (user_id)     REFERENCES users (id),
   CONSTRAINT fk_mandataire_profiles_verifier FOREIGN KEY (verified_by) REFERENCES users (id),
   CONSTRAINT chk_mandataire_rating CHECK (rating_avg IS NULL OR (rating_avg >= 1 AND rating_avg <= 5)),
-  CONSTRAINT chk_mandataire_country CHECK (country_code IS NULL OR REGEXP_LIKE(country_code, '^[A-Z]{2}$', 'c'))
+  CONSTRAINT chk_mandataire_country CHECK (country_code IS NULL OR (country_code REGEXP '^[A-Za-z]{2}$' AND CAST(country_code AS BINARY) = CAST(UPPER(country_code) AS BINARY)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -182,9 +182,9 @@ CREATE TABLE IF NOT EXISTS mandataire_accounts (
   country_code         CHAR(2)         NOT NULL COMMENT 'Pays où le compte est ouvert (obligatoire, libre, indépendant de la nationalité)',
   currency             CHAR(3)         NOT NULL COMMENT 'ISO 4217, proposée d''après le pays du compte',
   bank_name            VARCHAR(150)    NULL COMMENT 'Virement uniquement (facultatif)',
-  rate_symbol          VARCHAR(8)      NULL COMMENT 'Prix sur 100 : symbole de la devise des 100 (€, $, £…)',
+  rate_symbol          VARCHAR(8)      NULL COMMENT 'Prix sur 100 : devise des 100 (code ISO 4217, ex. EUR ; affichée « € »)',
   rate_amount          DECIMAL(15,2)   NULL COMMENT 'Prix sur 100 : montant versé pour 100 unités (ex. 65 000)',
-  rate_unit            VARCHAR(12)     NULL COMMENT 'Prix sur 100 : unité du montant (FCFA, F, XOF…)',
+  rate_unit            VARCHAR(12)     NULL COMMENT 'Prix sur 100 : devise du montant (code ISO 4217, ex. XOF ; affichée « FCFA »)',
   fee_percent          DECIMAL(5,2)    NULL COMMENT 'Pourcentage prélevé sur la transaction (ex. 25)',
   receive_details_enc  VARBINARY(1024) NOT NULL COMMENT 'Coordonnées de réception chiffrées (AES-256-GCM) : JSON {email, rib}, ou texte (anciens comptes)',
   status               ENUM('published','removed') NOT NULL DEFAULT 'published',
@@ -198,8 +198,8 @@ CREATE TABLE IF NOT EXISTS mandataire_accounts (
   KEY idx_mandataire_accounts_country (country_code, status),
   CONSTRAINT fk_mandataire_accounts_owner FOREIGN KEY (mandataire_id)   REFERENCES mandataire_profiles (id),
   CONSTRAINT fk_mandataire_accounts_type  FOREIGN KEY (account_type_id) REFERENCES account_types (id),
-  CONSTRAINT chk_mandataire_accounts_country  CHECK (REGEXP_LIKE(country_code, '^[A-Z]{2}$', 'c')),
-  CONSTRAINT chk_mandataire_accounts_currency CHECK (REGEXP_LIKE(currency, '^[A-Z]{3}$', 'c')),
+  CONSTRAINT chk_mandataire_accounts_country  CHECK ((country_code REGEXP '^[A-Za-z]{2}$' AND CAST(country_code AS BINARY) = CAST(UPPER(country_code) AS BINARY))),
+  CONSTRAINT chk_mandataire_accounts_currency CHECK ((currency REGEXP '^[A-Za-z]{3}$' AND CAST(currency AS BINARY) = CAST(UPPER(currency) AS BINARY))),
   CONSTRAINT chk_mandataire_accounts_removed  CHECK (status <> 'removed' OR removed_at IS NOT NULL),
   CONSTRAINT chk_mandataire_accounts_rate CHECK (
     (rate_symbol IS NULL AND rate_amount IS NULL AND rate_unit IS NULL)
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   CONSTRAINT fk_transactions_payout_type  FOREIGN KEY (payout_account_type_id) REFERENCES account_types (id),
   CONSTRAINT chk_transactions_amount   CHECK (amount IS NULL OR amount > 0),
   CONSTRAINT chk_transactions_limit    CHECK (amount_eur IS NULL OR limit_eur IS NULL OR amount_eur <= limit_eur),
-  CONSTRAINT chk_transactions_currency CHECK (currency IS NULL OR REGEXP_LIKE(currency, '^[A-Z]{3}$', 'c')),
+  CONSTRAINT chk_transactions_currency CHECK (currency IS NULL OR (currency REGEXP '^[A-Za-z]{3}$' AND CAST(currency AS BINARY) = CAST(UPPER(currency) AS BINARY))),
   CONSTRAINT chk_transactions_done     CHECK (status <> 'completed' OR completed_at IS NOT NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
