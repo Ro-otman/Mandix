@@ -124,16 +124,21 @@ const INVALID = { ok: false, code: "invalid", message: "Adresse e-mail ou mot de
 /**
  * @returns {Promise<{ok: true, user: object, tokens: object} | {ok: false, code: string, message: string}>}
  */
-/** Onglet de connexion : « client » ou « mandataire ». Les administrateurs se connectent depuis l'un ou l'autre. */
-const SPACE_ROLES = Object.freeze({ client: ["client", "admin"], mandataire: ["mandataire", "admin"] });
+/**
+ * Page de connexion : onglet « client », onglet « mandataire », ou connexion administrateur
+ * (« /connexion?espace=admin »). Chacune n'accepte que son type de compte.
+ */
+const SPACE_ROLES = Object.freeze({ client: ["client"], mandataire: ["mandataire"], admin: ["admin"] });
 const WRONG_SPACE = Object.freeze({
   client: "Ce compte est un compte client. Connectez-vous depuis l'onglet « Client ».",
   mandataire: "Ce compte est un compte mandataire. Connectez-vous depuis l'onglet « Professionnel ».",
+  admin: "Ce compte est un compte administrateur. Connectez-vous depuis la connexion administrateur.",
 });
+const NOT_ADMIN = "Ce compte n'est pas un compte administrateur.";
 
 /**
- * @param space onglet choisi ("client" | "mandataire") : un compte d'un autre type est refusé, sans ouvrir
- *              de session. Absent : pas de contrôle (le formulaire l'envoie toujours).
+ * @param space page choisie ("client" | "mandataire" | "admin") : un compte d'un autre type est refusé, sans
+ *              ouvrir de session. Absent : pas de contrôle (le formulaire l'envoie toujours).
  */
 export async function login({ email, password, remember, space = null }, { ip, userAgent }) {
   const failures = await LoginAttempt.recentFailures(email, LOCK.windowSeconds);
@@ -163,7 +168,7 @@ export async function login({ email, password, remember, space = null }, { ip, u
   if (user.status !== "active") return INVALID;
   // Mauvais onglet : le mot de passe est correct (pas un échec de connexion), mais aucune session n'est ouverte.
   if (SPACE_ROLES[space] && !SPACE_ROLES[space].includes(user.role)) {
-    return { ok: false, code: "wrong_space", message: WRONG_SPACE[user.role] };
+    return { ok: false, code: "wrong_space", message: space === "admin" ? NOT_ADMIN : WRONG_SPACE[user.role] };
   }
 
   if (needsRehash(user.password_hash)) await User.updatePassword(user.id, await hashPassword(password));

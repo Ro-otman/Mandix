@@ -196,7 +196,7 @@ test("inscription, confirmation de l'adresse et connexion", async () => {
   // Espace d'un autre rôle : pas de session pour cet espace → connexion à cet espace (onglet Professionnel).
   const other = await http(jar, "GET", "/mandataire/comptes");
   assert.equal(other.status, 302);
-  assert.equal(other.location, "/connexion?suite=%2Fmandataire%2Fcomptes");
+  assert.equal(other.location, "/connexion?espace=mandataire&suite=%2Fmandataire%2Fcomptes");
 
   // Page de connexion pour un utilisateur déjà connecté : renvoi vers son espace.
   const guest = await http(jar, "GET", "/connexion");

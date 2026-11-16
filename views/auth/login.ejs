@@ -1,17 +1,18 @@
 <%#
   Connexion, en deux onglets qui font réellement la différence :
-    - « Client » n'accepte que les comptes clients, « Professionnel » que les comptes mandataires
-      (les administrateurs passent par l'un ou l'autre). Un compte de l'autre type est refusé par le serveur
-      (authService.login, paramètre space) sans ouvrir de session.
+    - « Client » n'accepte que les comptes clients, « Professionnel » que les comptes mandataires.
+      Un compte de l'autre type est refusé par le serveur (authService.login, paramètre space) sans ouvrir de session.
+    - Connexion administrateur (« /connexion?espace=admin », space = 'admin') : sans onglets ni inscription,
+      réservée aux comptes administrateurs ; elle ouvre la session de l'espace administrateur sans toucher aux
+      sessions client ou mandataire du navigateur.
     - Le changement d'onglet est instantané (public/js/auth.js) : titre, couleur du bouton, lien d'inscription,
       champ caché « espace » et adresse de la page. Sans JavaScript, les onglets sont de simples liens.
   Locaux : errors, values, formError, unverified (adresse non confirmée), nextPath (page à rouvrir),
-  proSpace (onglet Professionnel), openSpaces (espaces déjà connectés dans ce navigateur : une session par espace,
+  space ('client' | 'mandataire' | 'admin'), openSpaces (espaces déjà connectés dans ce navigateur : une session par espace,
   leur onglet mène directement à l'espace au lieu d'afficher le formulaire).
 %>
 <%
   const err = (k) => errors && errors[k];
-  const space = proSpace ? 'mandataire' : 'client';
   const shown = (s) => (s === space ? '' : 'hidden');
   const SPACE_HOME = { client: '/client/dashboard', mandataire: '/mandataire/comptes' };
   const open = (s) => (typeof openSpaces !== 'undefined' ? openSpaces : []).includes(s);
@@ -19,7 +20,9 @@
 <div class="auth-card" data-login-space="<%= space %>">
   <h1 class="auth-title" data-space-show="client" <%= shown('client') %>>Bon retour <span class="auth-hl">parmi nous</span></h1>
   <h1 class="auth-title" data-space-show="mandataire" <%= shown('mandataire') %>>Votre espace <span class="auth-hl">mandataire</span></h1>
-
+  <% if (space === 'admin') { %>
+    <h1 class="auth-title">Espace <span class="auth-hl">administrateur</span></h1>
+  <% } else { %>
   <div class="role-switch" role="tablist" aria-label="Type de compte">
     <% [['client', 'user-round', 'Client', '/connexion'], ['mandataire', 'briefcase-business', 'Professionnel', '/connexion?espace=mandataire']].forEach(([s, ic, label, href]) => { %>
       <% if (open(s)) { %>
@@ -34,6 +37,7 @@
       <% } %>
     <% }) %>
   </div>
+  <% } %>
 
   <%- include('../partials/form-alert', { formError }) %>
   <% if (typeof unverified !== 'undefined' && unverified) { %>
@@ -79,6 +83,7 @@
     </button>
   </form>
 
+  <% if (space !== 'admin') { %>
   <div class="auth-divider" data-space-show="client" <%= shown('client') %>><span>Nouveau sur <%= appName %> ?</span></div>
   <div class="auth-alt" data-space-show="client" <%= shown('client') %>>
     <a class="auth-alt__item" href="/inscription">
@@ -94,4 +99,5 @@
       <span><strong>Devenir prestataire</strong><small>Compte professionnel</small></span>
     </a>
   </div>
+  <% } %>
 </div>

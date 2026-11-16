@@ -72,9 +72,16 @@ export function requestedSpace(req) {
   if (req.path === "/inscription") return "client";
   const hint = req.get("x-mandix-space") || req.query?.espace || req.body?.espace;
   if (isSpace(hint)) return hint;
-  if (req.path === "/connexion") return "client";
+  if (req.path === "/connexion") {
+    // Page à rouvrir après connexion (« suite ») : son espace, jamais la session d'un autre compte.
+    const target = String(req.query?.suite || req.body?.suite || "").split(/[/?]/)[1];
+    return isSpace(target) ? target : "client";
+  }
   return null;
 }
+
+/** Page de connexion d'un espace : l'administration et l'espace mandataire ont la leur. */
+const LOGIN_QUERY = Object.freeze({ admin: "espace=admin", mandataire: "espace=mandataire" });
 
 /**
  * Session de l'espace `space` présentée par le navigateur : jeton d'accès, sinon rotation du jeton de
@@ -160,8 +167,13 @@ export function requireAuth(req, res, next) {
   res.set("Cache-Control", "no-store");
   // Panneau latéral chargé en JavaScript : pas de redirection (la page de connexion s'afficherait dans le panneau).
   if (req.get("X-Mandix-Panel") === "1") return res.status(401).type("text/plain").send("Session expirée : rechargez la page.");
-  if (req.method === "GET") return res.redirect(`/connexion?suite=${encodeURIComponent(req.originalUrl)}`);
-  return res.redirect(303, "/connexion");
+  // La connexion s'ouvre sur l'espace demandé (ex. /admin → connexion administrateur), même si le navigateur
+  // détient déjà la session d'un autre espace : elle ne redirige donc jamais vers un autre compte.
+  // req.path est relatif au routeur (ex. « /dashboard » sous « /admin ») : l'espace se lit sur l'URL d'origine.
+  const first = req.originalUrl.split(/[/?]/)[1];
+  const spaceQuery = LOGIN_QUERY[isSpace(first) ? first : requestedSpace(req)];
+  if (req.method === "GET") return res.redirect(`/connexion?${spaceQuery ? `${spaceQuery}&` : ""}suite=${encodeURIComponent(req.originalUrl)}`);
+  return res.redirect(303, spaceQuery ? `/connexion?${spaceQuery}` : "/connexion");
 }
 
 /** Réservé aux visiteurs non connectés (connexion, inscription, mot de passe oublié). */

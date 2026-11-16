@@ -193,7 +193,7 @@ test("espace administrateur : indicateurs, listes, suspension et réactivation",
   // Les autres rôles n'ont pas accès à l'administration : sans session administrateur, retour à la connexion.
   const denied = await http(await login("afi@exemple.com"), "GET", "/admin/dashboard");
   assert.equal(denied.status, 302);
-  assert.match(denied.location, /^\/connexion\?suite=/);
+  assert.match(denied.location, /^\/connexion\?espace=admin&suite=/);
 });
 
 test("« Devenir prestataire » : espace mandataire si connecté en mandataire, sinon connexion", async () => {
@@ -316,6 +316,64 @@ test("connexion : chaque onglet n'accepte que son type de compte", async () => {
   // Page de l'espace mandataire demandée sans session : onglet Professionnel présélectionné
   const guest = new CookieJar();
   const redirected = await http(guest, "GET", "/mandataire/statistiques");
-  assert.match(redirected.location, /^\/connexion\?suite=/);
+  assert.match(redirected.location, /^\/connexion\?espace=mandataire&suite=/);
   assert.match((await http(guest, "GET", redirected.location)).text, /name="espace" value="mandataire"/);
+});
+
+test("connexion administrateur : jamais redirigée vers une autre session du navigateur", async () => {
+  // Navigateur déjà connecté en client ET en mandataire
+  const jar = await login("momo@exemple.com");
+  const proForm = await http(jar, "GET", "/connexion?espace=mandataire");
+  await http(jar, "POST", "/connexion", { _csrf: csrfOf(proForm.text), email: "afi@exemple.com", password: PASSWORD, espace: "mandataire" });
+  assert.equal((await http(jar, "GET", "/mandataire/comptes")).status, 200);
+
+  // Administration demandée : connexion administrateur, pas l'espace client ou mandataire
+  const toLogin = await http(jar, "GET", "/admin/verifications");
+  assert.equal(toLogin.status, 302);
+  assert.equal(toLogin.location, "/connexion?espace=admin&suite=%2Fadmin%2Fverifications");
+  const page = await http(jar, "GET", toLogin.location);
+  assert.equal(page.status, 200, "formulaire affiché malgré les sessions client et mandataire");
+  assert.match(page.text, /Espace <span class="auth-hl">administrateur<\/span>/);
+  assert.match(page.text, /name="espace" value="admin"/);
+  assert.doesNotMatch(page.text, /role="tablist"/, "pas d'onglets Client / Professionnel");
+  assert.doesNotMatch(page.text, /href="\/inscription"/, "pas d'inscription");
+  // Sans « espace » : la page à rouvrir suffit à choisir la connexion administrateur
+  const bySuite = await http(jar, "GET", "/connexion?suite=%2Fadmin%2Fdashboard");
+  assert.equal(bySuite.status, 200);
+  assert.match(bySuite.text, /name="espace" value="admin"/);
+
+  // Comptes client et mandataire refusés, aucune session administrateur ouverte
+  for (const email of ["momo@exemple.com", "afi@exemple.com"]) {
+    const refused = await http(jar, "POST", "/connexion", { _csrf: csrfOf(page.text), email, password: PASSWORD, espace: "admin", suite: "/admin/verifications" });
+    assert.equal(refused.status, 403);
+    assert.match(refused.text, /pas un compte administrateur/);
+  }
+  assert.equal((await http(jar, "GET", "/admin/dashboard")).status, 302);
+  // Un administrateur n'entre pas par l'onglet Client
+  const other = new CookieJar();
+  const viaClient = await http(other, "GET", "/connexion");
+  const adminAsClient = await http(other, "POST", "/connexion", { _csrf: csrfOf(viaClient.text), email: "admin@exemple.com", password: PASSWORD, espace: "client" });
+  assert.equal(adminAsClient.status, 403);
+  assert.match(adminAsClient.text, /compte administrateur/);
+
+  // Administrateur : session de l'espace administrateur, retour à la page demandée
+  const ok = await http(jar, "POST", "/connexion", { _csrf: csrfOf(page.text), email: "admin@exemple.com", password: PASSWORD, espace: "admin", suite: "/admin/verifications" });
+  assert.equal(ok.status, 303);
+  assert.equal(ok.location, "/admin/verifications");
+  const admin = await http(jar, "GET", "/admin/dashboard");
+  assert.equal(admin.status, 200);
+  assert.match(admin.text, /<meta name="mandix-space" content="admin">/);
+  const sessionAs = async (space) => (await http(jar, "GET", "/api/session", null, { accept: "application/json", "x-mandix-space": space })).text;
+  assert.match(await sessionAs("admin"), /"role":"admin"/);
+  // Les deux autres sessions restent ouvertes, chacune sur son compte
+  assert.match(await sessionAs("client"), /"role":"client"/);
+  assert.match(await sessionAs("mandataire"), /"role":"mandataire"/);
+  assert.equal((await http(jar, "GET", "/connexion?espace=admin")).location, "/admin/dashboard", "déjà connecté : retour à l'administration");
+
+  // Déconnexion de l'administration : retour à sa connexion, les autres sessions intactes
+  const out = await http(jar, "POST", "/deconnexion", { _csrf: csrfOf(admin.text), espace: "admin" });
+  assert.equal(out.location, "/connexion?espace=admin");
+  assert.equal((await http(jar, "GET", "/admin/dashboard")).status, 302);
+  assert.equal((await http(jar, "GET", "/client/dashboard")).status, 200);
+  assert.equal((await http(jar, "GET", "/mandataire/comptes")).status, 200);
 });

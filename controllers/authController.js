@@ -103,13 +103,23 @@ function renderAuth(res, view, title, aside, topLink, { status = 200, hideFooter
 /* ------------------------------------------------------------------ Connexion */
 
 const renderLogin = (res, locals = {}) =>
-  renderAuth(res, "login", "Connexion", "login", null, { hideFooter: true, nextPath: null, proSpace: false, openSpaces: [], ...locals });
+  renderAuth(res, "login", locals.space === "admin" ? "Connexion administrateur" : "Connexion", "login", null,
+    { hideFooter: true, nextPath: null, space: "client", openSpaces: [], ...locals });
 
-/** Connexion à l'espace mandataire (« /connexion?espace=mandataire »), ouverte par « Devenir prestataire ». */
-const isProSpace = (value) => value === "mandataire";
+/**
+ * Page de connexion : onglet Client (« /connexion »), onglet Professionnel (« /connexion?espace=mandataire »,
+ * ouvert par « Devenir prestataire ») ou connexion administrateur (« /connexion?espace=admin »).
+ * Sans précision : l'espace de la page à rouvrir après connexion, sinon Client.
+ */
+const LOGIN_SPACES = ["client", "mandataire", "admin"];
+const loginSpaceOf = (value, nextPath) => {
+  if (LOGIN_SPACES.includes(value)) return value;
+  const target = nextPath?.split(/[/?]/)[1];
+  return LOGIN_SPACES.includes(target) ? target : "client";
+};
 /** Autres espaces déjà connectés dans ce navigateur : leur onglet mène directement à l'espace. */
 const openSpacesOf = (req, current) => (req.authSpaces || []).filter((space) => space !== current);
-const LOGIN_PATH = { mandataire: "/connexion?espace=mandataire" };
+const LOGIN_PATH = { mandataire: "/connexion?espace=mandataire", admin: "/connexion?espace=admin" };
 const loginPathFor = (role) => LOGIN_PATH[role] || "/connexion";
 
 /**
@@ -124,9 +134,8 @@ export function enterProviderSpace(req, res) {
 
 export function showLogin(req, res) {
   const nextPath = safeNext(req.query.suite);
-  // Onglet « Professionnel » : demandé explicitement, ou page de l'espace mandataire à rouvrir après connexion.
-  const proSpace = isProSpace(req.query.espace) || Boolean(nextPath?.startsWith("/mandataire"));
-  return renderLogin(res, { nextPath, proSpace, openSpaces: openSpacesOf(req, proSpace ? "mandataire" : "client") });
+  const space = loginSpaceOf(req.query.espace, nextPath);
+  return renderLogin(res, { nextPath, space, openSpaces: openSpacesOf(req, space) });
 }
 
 /**
@@ -135,12 +144,14 @@ export function showLogin(req, res) {
  */
 export async function login(req, res) {
   const { errors, data } = readValidation(req);
-  const proSpace = isProSpace(data.espace);
-  const page = { nextPath: safeNext(data.suite), proSpace, openSpaces: openSpacesOf(req, proSpace ? "mandataire" : "client") };
+  const nextPath = safeNext(data.suite);
+  const shown = loginSpaceOf(data.espace, nextPath);
+  const page = { nextPath, space: shown, openSpaces: openSpacesOf(req, shown) };
   const values = { email: typeof data.email === "string" ? data.email : "" };
   if (errors) return renderLogin(res, { status: 422, errors, values, ...page });
 
-  const space = ["client", "mandataire"].includes(data.espace) ? data.espace : null;
+  // Page choisie : un compte d'un autre type est refusé (un administrateur n'entre que par sa connexion).
+  const space = LOGIN_SPACES.includes(data.espace) ? data.espace : null;
   const result = await authService.login({ email: data.email, password: data.password, remember: data.remember === "on", space }, context(req));
   if (!result.ok) {
     if (result.code === "unverified") res.cookie(PENDING_COOKIE, data.email, pendingCookieOptions);
