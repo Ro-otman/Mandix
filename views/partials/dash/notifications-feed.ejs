@@ -1,0 +1,100 @@
+<%#
+  Flux de notifications (espaces client et mandataire).
+  Locaux : feed (utils/notifications.js → buildFeed), settingsHref (facultatif : lien vers les préférences),
+           inPanel (facultatif : affiché dans le panneau latéral, avec un bouton Fermer), pageHref (facultatif, panneau).
+  Filtres, « marquer comme lu » et compteurs : public/js/notifications.js (sans rechargement).
+%>
+<% const panel = typeof inPanel !== 'undefined' && inPanel; %>
+<div class="nfeed <%= panel ? 'nfeed--panel' : '' %>" data-nfeed>
+  <header class="nfeed__head">
+    <div class="nfeed__heading">
+      <% if (panel) { %><h2 id="drawer-title">Notifications</h2><% } else { %><h1>Notifications</h1><% } %>
+      <span class="nfeed__new" data-nfeed-new <%= feed.unread ? '' : 'hidden' %>><span data-nfeed-unread><%= feed.unread %></span>&nbsp;nouvelle<span data-nfeed-plural><%= feed.unread > 1 ? 's' : '' %></span></span>
+    </div>
+    <button class="nfeed__readall" type="button" data-nfeed-readall <%= feed.unread ? '' : 'disabled' %> <%- panel ? 'title="Tout marquer comme lu"' : '' %>>
+      <%- icon('check-check', { size: 17 }) %> <span class="nfeed__readall-text">Tout marquer comme lu</span>
+    </button>
+    <% if (panel) { %>
+      <button class="btn btn--ghost btn--icon drawer__close" type="button" data-drawer-close aria-label="Fermer les notifications"><%- icon('x', { size: 20 }) %></button>
+    <% } %>
+  </header>
+
+  <div class="nfeed__tabs" role="group" aria-label="Filtrer les notifications">
+    <% feed.tabs.forEach((t, index) => { %>
+      <button class="nfeed__tab" type="button" aria-pressed="<%= index === 0 %>" data-nfeed-tab="<%= t.key %>">
+        <%= t.label %>
+        <% if (t.key === 'unread') { %><span class="nfeed__count" data-nfeed-unread-tab <%= t.count ? '' : 'hidden' %>><%= t.count %></span><% } %>
+      </button>
+    <% }) %>
+  </div>
+
+  <div class="nfeed__body">
+  <% feed.groups.forEach((group) => { %>
+    <section class="nfeed__group" data-nfeed-group aria-label="<%= group.label %>">
+      <h2 class="nfeed__period"><%= group.label %></h2>
+      <ul class="nfeed__list">
+        <% group.items.forEach((n) => { %>
+          <li class="nitem <%= n.unread ? 'is-unread' : '' %>" data-nitem data-nitem-id="<%= n.id %>" data-kind="<%= n.kind %>" <%= n.unread ? 'data-unread' : '' %>>
+            <a class="nitem__link" href="<%= n.link %>" data-nitem-open>
+              <span class="visually-hidden"><% if (n.unread) { %><span data-nitem-sr>Non lue : </span><% } %><%= n.actor ? `${n.actor.name} ` : '' %><%= n.title %></span>
+            </a>
+
+            <div class="nitem__media" aria-hidden="true">
+              <% if (n.actorAvatar) { %>
+                <span class="nitem__avatar"><%- n.actorAvatar %></span>
+                <span class="nitem__badge nitem__badge--<%= n.kindTone %>"><%- icon(n.kindIcon, { size: 11, strokeWidth: 2.5 }) %></span>
+              <% } else { %>
+                <span class="nitem__icon nitem__icon--<%= n.tone %>"><%- icon(n.icon, { size: 21 }) %></span>
+              <% } %>
+            </div>
+
+            <div class="nitem__body">
+              <div class="nitem__top">
+                <p class="nitem__title"><% if (n.actor) { %><strong><%= n.actor.name %></strong> <%= n.title %><% } else { %><strong><%= n.title %></strong><% } %></p>
+                <time class="nitem__time" datetime="<%= n.iso %>"><%= n.when %></time>
+              </div>
+              <% if (n.rating) { %>
+                <p class="nitem__stars" aria-label="<%= n.rating %> étoiles sur 5">
+                  <% for (let s = 0; s < 5; s += 1) { %><%- icon('star', { size: 14, className: s < n.rating ? 'is-on' : '' }) %><% } %>
+                </p>
+              <% } %>
+              <% if (n.actor) { %>
+                <div class="nitem__quote"><p class="nitem__text"><%= n.body %></p></div>
+              <% } else { %>
+                <p class="nitem__text"><%= n.body %></p>
+              <% } %>
+              <% if (n.cta) { %>
+                <a class="nitem__cta" href="<%= n.link %>" tabindex="-1" aria-hidden="true" data-nitem-open><%= n.cta %> <%- icon('arrow-right', { size: 14 }) %></a>
+              <% } %>
+            </div>
+
+            <div class="nitem__side">
+              <span class="nitem__dot" aria-hidden="true"></span>
+              <% if (n.unread) { %>
+                <button class="nitem__read" type="button" data-nitem-read aria-label="Marquer comme lu" title="Marquer comme lu"><%- icon('check', { size: 16 }) %></button>
+              <% } %>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% }) %>
+
+  <div class="nfeed__empty" data-nfeed-empty <%= feed.total ? 'hidden' : '' %>>
+    <span class="nfeed__empty-icon"><%- icon('bell-ring', { size: 28 }) %></span>
+    <p class="nfeed__empty-title" data-nfeed-empty-title>Vous êtes à jour</p>
+    <p class="nfeed__empty-text" data-nfeed-empty-text>Aucune notification pour le moment.</p>
+  </div>
+
+  </div>
+
+  <% if (panel) { %>
+    <footer class="nfeed__panel-foot">
+      <% if (typeof pageHref !== 'undefined' && pageHref) { %><a href="<%= pageHref %>"><%- icon('maximize-2', { size: 15 }) %> Ouvrir la page</a><% } %>
+      <% if (typeof settingsHref !== 'undefined' && settingsHref) { %><a href="<%= settingsHref %>"><%- icon('settings-2', { size: 15 }) %> Préférences</a><% } %>
+    </footer>
+  <% } else if (typeof settingsHref !== 'undefined' && settingsHref) { %>
+    <p class="nfeed__foot"><a href="<%= settingsHref %>"><%- icon('settings-2', { size: 15 }) %> Gérer mes préférences de notification</a></p>
+  <% } %>
+</div>
+<% if (!panel) { %><script src="<%= asset('js/notifications.js') %>" defer></script><% } %>

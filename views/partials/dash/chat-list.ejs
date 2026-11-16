@@ -1,0 +1,43 @@
+<%#
+  Liste des conversations (page Messages et panneau latéral).
+  Locaux : list (routes/demoSpaceRoutes.js → buildChat().list),
+           inPanel (facultatif : titre du panneau, bouton Fermer, lien vers la page complète),
+           searchId (facultatif : identifiant unique du champ de recherche), pageHref (facultatif, panneau).
+%>
+<% const panel = typeof inPanel !== 'undefined' && inPanel; %>
+<% const fieldId = typeof searchId !== 'undefined' && searchId ? searchId : 'chat-search'; %>
+<% const unreadTotal = list.reduce((s, c) => s + (c.unread || 0), 0); %>
+<aside class="chat__list" aria-label="Conversations" data-chat-list>
+  <header class="chat__list-head">
+    <% if (panel) { %><h2 class="chat__list-title" id="drawer-title">Messages</h2><% } else { %><h1 class="chat__list-title">Messages</h1><% } %>
+    <span class="count-pill count-pill--blue" data-chat-unread-total <%= unreadTotal ? '' : 'hidden' %>><span><span data-chat-unread-count><%= unreadTotal %></span> non lu<span data-chat-unread-plural><%= unreadTotal > 1 ? 's' : '' %></span></span></span>
+    <% if (panel) { %>
+      <button class="btn btn--ghost btn--icon drawer__close" type="button" data-drawer-close aria-label="Fermer les messages"><%- icon('x', { size: 20 }) %></button>
+    <% } %>
+  </header>
+  <div class="chat__search input-group">
+    <%- icon('search', { size: 16 }) %>
+    <label class="visually-hidden" for="<%= fieldId %>">Rechercher une conversation</label>
+    <input class="input" id="<%= fieldId %>" type="search" placeholder="Rechercher" data-chat-search autocomplete="off">
+  </div>
+  <ul class="chat__items" data-chat-items>
+    <% list.forEach((c) => { %>
+      <li data-chat-item data-chat-slug="<%= c.id %>" <% if (c.key) { %>data-chat-key="<%= c.key %>"<% } %> data-name="<%= c.name.toLowerCase() %>">
+        <a class="chat__item <%= c.isActive ? 'is-active' : '' %> <%= c.unread ? 'is-unread' : '' %>" href="<%= c.href %>" <%- c.isActive ? 'aria-current="page"' : '' %>>
+          <span class="chat__avatar"><%- c.avatar %></span>
+          <span class="chat__item-body">
+            <span class="chat__item-top"><strong><%= c.name %></strong><time data-chat-when><%= c.when %></time></span>
+            <span class="chat__item-bottom"><span class="chat__preview" data-chat-item-preview <%- c.isActive ? 'data-chat-preview' : '' %>><%= c.preview %></span><span class="chat__unread" data-chat-item-unread <%= c.unread ? '' : 'hidden' %>><%= c.unread || 0 %></span></span>
+          </span>
+        </a>
+      </li>
+    <% }) %>
+  </ul>
+  <p class="chat__empty-search" data-chat-noresult hidden>Aucune conversation ne correspond.</p>
+  <% if (panel && !list.length) { %>
+    <p class="chat__empty-search">Aucune conversation pour le moment. Trouvez un mandataire et envoyez-lui un message.</p>
+  <% } %>
+  <% if (panel && typeof pageHref !== 'undefined' && pageHref) { %>
+    <footer class="nfeed__panel-foot"><a href="<%= pageHref %>"><%- icon('maximize-2', { size: 15 }) %> Ouvrir la page Messages</a></footer>
+  <% } %>
+</aside>

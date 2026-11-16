@@ -1,0 +1,142 @@
+<%# Marketplace des mandataires bancaires. Locaux : filters, results, countries, accountTypes, banks, languages, activeFilterCount, countryLabel, countryPlace, typeLabel, totalCountries. %>
+<%
+  const qs = (overrides = {}) => {
+    const params = new URLSearchParams();
+    const merged = { ...filters, ...overrides };
+    Object.entries(merged).forEach(([k, v]) => { if (v && !(k === 'tri' && v === 'pertinence')) params.set(k, v); });
+    const s = params.toString();
+    return s ? `/mandataires?${s}` : '/mandataires';
+  };
+  const headline = typeLabel && countryLabel ? `${typeLabel} · ${countryLabel}`
+    : typeLabel ? typeLabel
+    : countryLabel ? `Mandataires bancaires · ${countryLabel}`
+    : 'Trouvez votre mandataire bancaire';
+%>
+
+<section class="mk-hero">
+  <div class="container">
+    <nav aria-label="Fil d'Ariane">
+      <ol class="breadcrumb"><li><a href="/">Accueil</a></li><li aria-hidden="true">/</li><li aria-current="page">Trouver un mandataire</li></ol>
+    </nav>
+    <div class="mk-hero__head">
+      <div>
+        <h1 class="mk-hero__title" data-hero-item><%= headline %></h1>
+        <p class="mk-hero__sub" data-hero-item>
+          <% const n = results.length, s = n > 1 ? "s" : "", nbPays = new Set(results.map((r) => r.countryCode)).size; %>
+          <strong><%= n %></strong> mandataire<%= s %><% if (countryPlace) { %> <%= countryPlace %><% } else if (nbPays > 1) { %> dans <strong><%= nbPays %></strong> pays<% } %>, prêt<%= s %> à répondre à vos questions.
+        </p>
+      </div>
+    </div>
+
+    <div data-hero-item>
+      <%- include('../partials/search-bar', { action: '/mandataires', idPrefix: 'mk', keep: ['banque', 'langue', 'distance', 'tri'] }) %>
+    </div>
+
+    <div class="mk-chips" aria-label="Types de comptes">
+      <a class="mk-chip <%= !filters.type ? 'is-active' : '' %>" href="<%= qs({ type: '' }) %>">Tous</a>
+      <% accountTypes.forEach((t) => { %>
+        <a class="mk-chip <%= filters.type === t.slug ? 'is-active' : '' %>" href="<%= qs({ type: t.slug }) %>">
+          <%- serviceLogo(t.slug, { size: 18 }) %> <%= t.name %>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="mk-body">
+  <div class="container mk-layout">
+    <aside class="mk-filters" aria-labelledby="filters-title">
+      <details class="mk-filters__panel" open data-filters>
+        <summary class="mk-filters__summary">
+          <span id="filters-title"><%- icon('sliders-horizontal', { size: 18 }) %> Filtres
+            <% if (activeFilterCount) { %><span class="mk-count"><%= activeFilterCount %></span><% } %>
+          </span>
+          <%- icon('chevron-down', { size: 18, className: 'mk-filters__chevron' }) %>
+        </summary>
+
+        <form class="mk-filters__form" action="/mandataires" method="get" data-autosubmit>
+          <input type="hidden" name="tri" value="<%= filters.tri %>">
+          <% ['nom', 'somme'].forEach((k) => { if (filters[k]) { %><input type="hidden" name="<%= k %>" value="<%= filters[k] %>"><% } }) %>
+
+          <div class="mk-group">
+            <label class="mk-group__label" for="f-country">Pays</label>
+            <select class="select" id="f-country" name="pays">
+              <option value="">Tous les pays</option>
+              <% countries.forEach((c) => { %><option value="<%= c.code %>" <%= filters.pays === c.code ? 'selected' : '' %>><%= c.name %> (<%= c.count %>)</option><% }) %>
+            </select>
+          </div>
+
+          <fieldset class="mk-group">
+            <legend>Type de compte</legend>
+            <label class="mk-option"><input type="radio" name="type" value="" <%= !filters.type ? 'checked' : '' %>><span>Tous les comptes</span></label>
+            <% accountTypes.forEach((t) => { %>
+              <label class="mk-option"><input type="radio" name="type" value="<%= t.slug %>" <%= filters.type === t.slug ? 'checked' : '' %>><span><%= t.name %></span></label>
+            <% }) %>
+          </fieldset>
+
+          <% if (banks.length) { %>
+            <div class="mk-group">
+              <label class="mk-group__label" for="f-bank">Banque</label>
+              <select class="select" id="f-bank" name="banque">
+                <option value="">Toutes les banques</option>
+                <% banks.forEach((name) => { %><option value="<%= name %>" <%= filters.banque === name ? 'selected' : '' %>><%= name %></option><% }) %>
+              </select>
+            </div>
+          <% } %>
+
+          <% if (languages.length) { %>
+            <div class="mk-group">
+              <label class="mk-group__label" for="f-lang">Langue parlée</label>
+              <select class="select" id="f-lang" name="langue">
+                <option value="">Toutes les langues</option>
+                <% languages.forEach((l) => { %><option value="<%= l %>" <%= filters.langue === l ? 'selected' : '' %>><%= l %></option><% }) %>
+              </select>
+            </div>
+          <% } %>
+
+          <div class="mk-group">
+            <label class="mk-option"><input type="checkbox" name="distance" value="oui" <%= filters.distance === 'oui' ? 'checked' : '' %>><span>Accompagnement à distance</span></label>
+          </div>
+
+          <div class="mk-filters__actions">
+            <button class="btn btn--primary btn--block mk-filters__submit" type="submit">Appliquer</button>
+            <% if (activeFilterCount) { %><a class="btn btn--ghost btn--block" href="/mandataires"><%- icon('rotate-ccw', { size: 16 }) %> Réinitialiser</a><% } %>
+          </div>
+        </form>
+      </details>
+    </aside>
+
+    <div class="mk-results">
+      <div class="mk-toolbar">
+        <p class="mk-toolbar__count"><strong><%= results.length %></strong> résultat<%= results.length > 1 ? 's' : '' %></p>
+        <form class="mk-sort" action="/mandataires" method="get" data-autosubmit>
+          <% ['pays', 'type', 'nom', 'somme', 'banque', 'langue', 'distance'].forEach((k) => { if (filters[k]) { %><input type="hidden" name="<%= k %>" value="<%= filters[k] %>"><% } }) %>
+          <label for="sort">Trier par</label>
+          <select class="select select--compact" id="sort" name="tri">
+            <option value="pertinence" <%= filters.tri === 'pertinence' ? 'selected' : '' %>>Pertinence</option>
+            <option value="note" <%= filters.tri === 'note' ? 'selected' : '' %>>Meilleures notes</option>
+            <option value="reponse" <%= filters.tri === 'reponse' ? 'selected' : '' %>>Les plus réactifs</option>
+          </select>
+          <noscript><button class="btn btn--sm" type="submit">Trier</button></noscript>
+        </form>
+      </div>
+
+      <% if (results.length) { %>
+        <div class="mk-grid" data-reveal data-reveal-stagger>
+          <% results.forEach((pro) => { %><%- include('../partials/mandataire-card', { pro, profileInPanel: true, publicMode: true }) %><% }) %>
+        </div>
+      <% } else { %>
+        <div class="card">
+          <%- include('../partials/empty-state', {
+            emptyIllustration: 'search',
+            emptyTitle: 'Aucun mandataire ne correspond à ces critères',
+            emptyText: 'Essayez un autre pays, un autre type de compte ou retirez un filtre.',
+            emptyAction: { href: '/mandataires', label: 'Réinitialiser les filtres' }
+          }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<script src="<%= asset('js/marketplace.js') %>" defer></script>

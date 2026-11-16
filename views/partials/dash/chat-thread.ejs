@@ -1,0 +1,33 @@
+<%#
+  Une conversation guidée : en-tête, messages préfaits et réponses possibles (aucune saisie libre).
+  Locaux : t (fil : name, avatarSvg, verified, presence|subtitle, profileHref, flow), chatRole, basePath,
+           inPanel (facultatif : affichée dans le panneau latéral, avec flèche retour et bouton Fermer).
+  t.flow (services/chatFlow.js) : état initial de la conversation, lu par public/js/chat.js qui affiche les
+  messages et, selon l'étape, les réponses préfaites, le choix du montant, l'envoi de la preuve, etc.
+%>
+<% const panel = typeof inPanel !== 'undefined' && inPanel; %>
+<section class="chat__thread" data-chat-root data-chat-slug="<%= t.id %>" data-chat-unread="<%= t.unread || 0 %>" aria-label="Conversation avec <%= t.name %>">
+  <header class="chat__thread-head">
+    <% if (panel) { %>
+      <button class="btn btn--ghost btn--icon drawer__back" type="button" data-drawer-back aria-label="Retour aux conversations"><%- icon('arrow-left', { size: 20 }) %></button>
+    <% } else { %>
+      <a class="btn btn--ghost btn--icon chat__back" href="<%= basePath %>" aria-label="Retour aux conversations"><%- icon('arrow-left', { size: 20 }) %></a>
+    <% } %>
+    <span class="chat__avatar chat__avatar--lg"><%- t.avatarSvg %></span>
+    <div class="chat__who">
+      <p class="chat__who-name" <%- panel ? 'id="drawer-title"' : '' %>><span><%= t.name %></span><% if (t.verified) { %><%- verifiedBadge({ size: 17 }) %><% } %></p>
+      <% if (t.presence) { %><%- include('../presence', { status: t.presence }) %><% } else { %><p class="chat__who-sub"><%= t.subtitle %></p><% } %>
+    </div>
+    <% if (t.profileHref) { %><a class="btn btn--ghost-border btn--sm chat__profile" href="<%= t.profileHref %>" <% if (t.profileHref.indexOf('/client/mandataires/') === 0) { %>data-open-profile="<%= t.id %>"<% } %>><%- icon('user-round', { size: 15 }) %> Voir le profil</a><% } %>
+    <% if (panel) { %>
+      <button class="btn btn--ghost btn--icon drawer__close" type="button" data-drawer-close aria-label="Fermer la conversation"><%- icon('x', { size: 20 }) %></button>
+    <% } %>
+  </header>
+
+  <div class="chat__messages" data-chat-messages tabindex="0" aria-live="polite" aria-label="Messages">
+    <noscript><p class="chat__noscript">Activez JavaScript pour utiliser la messagerie.</p></noscript>
+  </div>
+
+  <div class="chat__composer chat__composer--guided" data-flow-composer aria-label="Réponses possibles"></div>
+  <script type="application/json" data-chat-flow><%- JSON.stringify(t.flow).replace(/</g, '\\u003c') %></script>
+</section>

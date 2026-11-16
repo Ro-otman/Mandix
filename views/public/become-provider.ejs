@@ -1,0 +1,61 @@
+<%#
+  Présentation de l'espace mandataire. Parcours réel : pseudo, e-mail, mot de passe, confirmation de l'adresse,
+  ajout des comptes (publiés aussitôt), demandes des clients. Aucune pièce justificative n'est demandée :
+  ne jamais annoncer de vérification de documents ni de badge « vérifié » sur cette page.
+%>
+<section class="pro-hero">
+  <div class="container pro-hero__grid">
+    <div>
+      <p class="hero__badge" data-hero-item><%- icon('briefcase-business', { size: 16 }) %> Espace mandataire</p>
+      <h1 class="pro-hero__title" data-hero-item>Vos comptes, des clients du monde <span class="hero__hl">entier.</span></h1>
+      <p class="hero__lead" data-hero-item>Vous avez des comptes PayPal, Wise, Western Union, crypto… ? Publiez-les sur Mandix et recevez les demandes de transaction de clients du monde entier.</p>
+      <div class="cluster" data-hero-item>
+        <a class="btn btn--gold btn--lg" href="/mandataire/inscription"><%- icon('rocket', { size: 18 }) %> Créer mon espace mandataire</a>
+        <a class="btn btn--ghost-border btn--lg" href="#comment">Comment ça marche</a>
+      </div>
+      <p class="pro-hero__note" data-hero-item><%- icon('circle-check', { size: 16 }) %> Pseudo, e-mail, mot de passe : aucune pièce demandée</p>
+    </div>
+    <div class="pro-hero__media" data-hero-item>
+      <%- include('../partials/photo', { slot: 'accueil-professionnel', eager: true }) %>
+      <span class="hero__chip hero__chip--ok"><%- icon('wallet', { size: 16 }) %> +13 comptes acceptés</span>
+    </div>
+  </div>
+</section>
+
+<section class="band band--white" aria-labelledby="benefits">
+  <div class="container">
+    <div class="band-head"><div class="band-head__text"><p class="kicker">Avantages</p><h2 id="benefits">Tout ce qu'il faut pour développer votre activité</h2></div></div>
+    <div class="benefits" data-reveal data-reveal-stagger>
+      <% [['globe', 'Visibilité internationale', 'Les clients vous trouvent par compte, par pays et par montant.'],
+          ['wallet', 'Vos comptes en ligne', 'Ajoutez ou retirez vos comptes en quelques clics : ils sont publiés dès leur ajout.'],
+          ['message-circle', 'Messagerie guidée', 'Chaque transaction suit des étapes claires, sans échanges improvisés.'],
+          ['bell', 'Notifications en temps réel', 'Vous êtes prévenu dès qu\'un client vous contacte.'],
+          ['star', 'Réputation', 'Chaque transaction terminée est évaluée par le client.'],
+          ['trending-up', 'Niveaux et certification', 'Votre plafond augmente avec vos transactions, jusqu\'à la certification à 1 000.']].forEach(([ic, t, d]) => { %>
+        <article class="benefit"><span class="benefit__icon"><%- icon(ic, { size: 22, strokeWidth: 1.75 }) %></span><h3><%= t %></h3><p><%= d %></p></article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="band band--mist" id="comment" aria-labelledby="pro-steps">
+  <div class="container">
+    <div class="band-head"><div class="band-head__text"><p class="kicker">Comment ça marche</p><h2 id="pro-steps">De l'inscription aux premières demandes</h2></div></div>
+    <ol class="path" data-reveal data-reveal-stagger>
+      <% [['user-plus', 'Créez votre compte', 'Pseudo, e-mail et mot de passe.'],
+          ['mail-check', 'Confirmez votre e-mail', 'Un lien de confirmation vous est envoyé.'],
+          ['wallet', 'Ajoutez vos comptes', 'PayPal, Wise, virement, crypto… publiés aussitôt.'],
+          ['message-circle', 'Recevez des demandes', 'Les clients vous contactent, la transaction se déroule pas à pas.']].forEach(([ic, t, d], i) => { %>
+        <li class="path__step"><span class="path__num"><%= i + 1 %></span><span class="path__icon"><%- icon(ic, { size: 24, strokeWidth: 1.75 }) %></span><h3><%= t %></h3><p><%= d %></p></li>
+      <% }) %>
+    </ol>
+  </div>
+</section>
+
+<section class="band band--navy">
+  <div class="container cta-simple cta-simple--dark">
+    <h2>Prêt à publier vos comptes ?</h2>
+    <p>Créez votre espace en quelques minutes, sans aucune pièce justificative.</p>
+    <a class="btn btn--gold btn--lg" href="/mandataire/inscription"><%- icon('rocket', { size: 18 }) %> Commencer maintenant</a>
+  </div>
+</section>

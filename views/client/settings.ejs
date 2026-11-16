@@ -1,0 +1,25 @@
+<%- include('../partials/dash/page-head', { heading: 'Paramètres', sub: 'Sécurité de votre compte.' }) %>
+
+<div class="stack-lg settings-narrow">
+  <form class="panel form-panel" method="post" action="/client/parametres/mot-de-passe">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="panel__title"><%- icon('key-round', { size: 20 }) %> Mot de passe</h2>
+    <div class="form-grid">
+      <div class="field form-grid__full"><label class="field__label" for="s-current">Mot de passe actuel</label><input class="input" id="s-current" name="current" type="password" autocomplete="current-password" maxlength="128" required></div>
+      <div class="field"><label class="field__label" for="s-new">Nouveau mot de passe</label><input class="input" id="s-new" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required><p class="field__hint">10 caractères minimum, avec un chiffre et une lettre.</p></div>
+      <div class="field"><label class="field__label" for="s-confirm">Confirmation</label><input class="input" id="s-confirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="10" maxlength="128" required data-password-confirm="s-new"></div>
+    </div>
+    <p class="field__hint">Vos autres appareils seront déconnectés.</p>
+    <div class="form-actions"><button class="btn btn--primary" type="submit" data-busy-label="Mise à jour…">Mettre à jour</button></div>
+  </form>
+
+
+  <section class="panel panel--danger">
+    <h2 class="panel__title"><%- icon('trash-2', { size: 20 }) %> Supprimer mon compte</h2>
+    <p class="panel__text">Vos données personnelles seront anonymisées. L'historique de vos conversations est conservé de façon anonyme, comme l'exige la traçabilité de la plateforme.</p>
+    <form method="post" action="/client/compte/supprimer" data-confirm="Cette action est définitive. Voulez-vous vraiment supprimer votre compte ?" data-confirm-title="Supprimer mon compte" data-confirm-label="Supprimer définitivement" data-confirm-tone="danger">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn--danger" type="submit" data-busy-label="Suppression…">Supprimer mon compte</button>
+    </form>
+  </section>
+</div>

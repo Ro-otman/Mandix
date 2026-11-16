@@ -1,0 +1,3 @@
+<%# Badge de statut. Locaux : group (verification, request, …), value. %>
+<% const s = labels.status(group, value); %>
+<span class="badge badge--<%= s.tone %> badge--dot"><%= s.label %></span>

@@ -1,0 +1,15 @@
+<%#
+  Emplacement photo. Locaux : slot (clé de content/photos.js), photoClass (classe CSS facultative),
+  eager (true pour l'image principale au-dessus de la ligne de flottaison).
+%>
+<% const p = photo(slot); const cls = typeof photoClass !== 'undefined' ? photoClass : ''; %>
+<% if (p.src) { %>
+  <img class="photo <%= cls %>" src="<%= p.src %>" alt="<%= p.alt %>"
+       <%= typeof eager !== 'undefined' && eager ? 'fetchpriority=high' : 'loading=lazy' %> decoding="async">
+<% } else { %>
+  <div class="photo photo--placeholder <%= cls %>" role="img" aria-label="<%= p.alt %>">
+    <span class="photo__icon"><%- icon(p.icon, { size: 28, strokeWidth: 1.75 }) %></span>
+    <span class="photo__label"><%= p.label %></span>
+    <% if (!isProduction) { %><span class="photo__hint">public/images/photos/<%= slot %>.jpg</span><% } %>
+  </div>
+<% } %>

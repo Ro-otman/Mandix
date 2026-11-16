@@ -1,0 +1,16 @@
+<%#
+  Champs du profil client : un pseudo et une adresse e-mail, rien d'autre.
+  Locaux : client, idPrefix (unicité des identifiants : page « p », panneau « pp »).
+%>
+<div class="form-grid">
+  <div class="field">
+    <label class="field__label" for="<%= idPrefix %>-pseudo">Pseudo</label>
+    <input class="input" id="<%= idPrefix %>-pseudo" name="pseudo" value="<%= client.pseudo %>" required minlength="3" maxlength="20" pattern="[A-Za-z0-9._\-]{3,20}" autocomplete="username" aria-describedby="<%= idPrefix %>-pseudo-hint">
+    <p class="field__hint" id="<%= idPrefix %>-pseudo-hint">C'est le seul nom visible par les mandataires.</p>
+  </div>
+  <div class="field">
+    <label class="field__label" for="<%= idPrefix %>-email">Adresse e-mail</label>
+    <input class="input" id="<%= idPrefix %>-email" type="email" value="<%= client.email %>" readonly aria-describedby="<%= idPrefix %>-email-hint">
+    <p class="field__hint" id="<%= idPrefix %>-email-hint">Pour changer d'adresse, contactez-nous depuis le centre d'aide.</p>
+  </div>
+</div>

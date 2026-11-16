@@ -1,0 +1,15 @@
+<%#
+  Champs du profil du mandataire (présentation et localisation).
+  Locaux : pro, countries, idPrefix (unicité des identifiants : page « pr », panneau « ppr »).
+%>
+<div class="form-grid">
+  <div class="field form-grid__full"><label class="field__label" for="<%= idPrefix %>-bio">Présentation</label><textarea class="textarea textarea--tall" id="<%= idPrefix %>-bio" name="bio" maxlength="1200"><%= pro.bio %></textarea></div>
+  <div class="field">
+    <label class="field__label" for="<%= idPrefix %>-country">Pays <span class="field__optional">(facultatif)</span></label>
+    <select class="select" id="<%= idPrefix %>-country" name="country">
+      <option value="" <%= pro.country ? '' : 'selected' %>>Non précisé</option>
+      <% countries.forEach((c) => { %><option value="<%= c.code %>" <%= c.code === pro.country ? 'selected' : '' %>><%= c.name %></option><% }) %>
+    </select>
+  </div>
+  <div class="field"><label class="field__label" for="<%= idPrefix %>-lang">Langues parlées</label><input class="input" id="<%= idPrefix %>-lang" name="languages" value="<%= pro.languages.join(', ') %>"><p class="field__hint">Séparez les langues par une virgule.</p></div>
+</div>

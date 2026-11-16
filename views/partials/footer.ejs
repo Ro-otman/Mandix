@@ -1,0 +1,50 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="site-footer__grid">
+      <div class="site-footer__about">
+        <%- include('logo') %>
+        <p>
+          La plateforme pour faire vos transactions d'un compte à l'autre avec un mandataire de confiance, dans une messagerie guidée.
+        </p>
+      </div>
+
+      <nav aria-labelledby="footer-platform">
+        <h2 class="site-footer__title" id="footer-platform">Plateforme</h2>
+        <ul class="site-footer__links">
+          <li><a href="/mandataires">Trouver un mandataire</a></li>
+          <li><a href="/#comment-ca-marche">Comment ça marche</a></li>
+          <li><a href="/aide">Centre d'aide et contact</a></li>
+          <li><a href="/a-propos">À propos</a></li>
+        </ul>
+      </nav>
+
+      <nav aria-labelledby="footer-account">
+        <h2 class="site-footer__title" id="footer-account">Votre compte</h2>
+        <ul class="site-footer__links">
+          <li><a href="/connexion">Connexion</a></li>
+          <li><a href="/inscription">Créer un compte client</a></li>
+          <li><a href="/devenir-mandataire">Devenir mandataire</a></li>
+        </ul>
+      </nav>
+
+      <nav aria-labelledby="footer-legal">
+        <h2 class="site-footer__title" id="footer-legal">Informations légales</h2>
+        <ul class="site-footer__links">
+          <li><a href="/conditions-utilisation">Conditions d'utilisation</a></li>
+          <li><a href="/confidentialite">Politique de confidentialité</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <div class="site-footer__legal">
+      <p>
+        <%= appName %> est un service de mise en relation entre clients et mandataires. La plateforme n'est pas
+        un établissement de crédit ou de paiement : elle ne détient aucun fonds, n'effectue aucune opération
+        bancaire et ne vous demandera jamais vos identifiants bancaires.
+      </p>
+      <p>PayPal, Stripe, Wise, Transcash, Neosurf, Paysafecard, Wero, PCS Mastercard, Skrill, Western Union et MoneyGram sont des marques de leurs propriétaires respectifs. <%= appName %> n'est affilié à aucun de ces services.</p>
+      <p>Photographies : Pexels (Yan Krukov, Jboy Designer, Kindel Media, Mikhail Nilov, AKB PH, Karola G, Anthony Shkraba). Illustrations : <%= appName %>.</p>
+      <p>&copy; <%= currentYear %> <%= appName %></p>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,127 @@
+<%#
+  Fiche d'un mandataire (« page produit »).
+  Locaux : profile (services/marketplaceService.js → getProfile), inPanel (facultatif : panneau latéral),
+           mode (facultatif) : "client" (défaut, espace client) ou "preview" (espace mandataire : aperçu de sa
+           propre fiche, sans messagerie, avec « Modifier mon profil » et « Gérer mes comptes ») ou "public" (visiteur :
+           même fiche que l'espace client ; « Envoyer un message » passe par la connexion puis ouvre la conversation).
+  - Panneau : barre avec retour (affiché par public/js/drawer.js s'il y a une vue précédente), lien pleine page, Fermer.
+  - Page : /client/mandataires/:slug ou /mandataire/apercu, mise en page de l'espace concerné.
+  Le badge « vérifié » et la certification ne s'affichent que s'ils sont réellement acquis.
+%>
+<% const panel = typeof inPanel !== 'undefined' && inPanel; %>
+<% const preview = typeof mode !== 'undefined' && mode === 'preview'; %>
+<% const isPublic = typeof mode !== 'undefined' && mode === 'public'; %>
+<% const chatHref = isPublic ? `/connexion?suite=${encodeURIComponent(`/client/messages/${profile.slug}`)}` : `/client/messages/${profile.slug}`; %>
+<% const pageHref = preview ? '/mandataire/apercu' : isPublic ? `/mandataires/${profile.slug}` : `/client/mandataires/${profile.slug}`; %>
+<article class="msheet <%= panel ? 'msheet--panel' : 'msheet--page' %>" data-presence-scope aria-labelledby="<%= panel ? 'drawer-title' : 'msheet-title' %>">
+  <% if (panel) { %>
+    <div class="msheet__bar">
+      <button class="btn btn--ghost btn--icon drawer__back" type="button" data-drawer-back aria-label="Retour" hidden><%- icon('arrow-left', { size: 20 }) %></button>
+      <p class="msheet__bar-title"><%= preview ? 'Aperçu de votre fiche' : 'Profil du mandataire' %></p>
+      <a class="btn btn--ghost btn--icon msheet__open" href="<%= pageHref %>" data-drawer-native aria-label="Ouvrir la fiche en pleine page" title="Ouvrir en pleine page"><%- icon('maximize-2', { size: 18 }) %></a>
+      <button class="btn btn--ghost btn--icon drawer__close" type="button" data-drawer-close aria-label="<%= preview ? 'Fermer l\'aperçu' : 'Fermer le profil' %>"><%- icon('x', { size: 20 }) %></button>
+    </div>
+  <% } %>
+  <% if (preview) { %>
+    <p class="msheet__notice"><%- icon('eye', { size: 16 }) %> Aperçu : voici votre fiche telle que la voient les clients.</p>
+  <% } %>
+
+  <div class="msheet__scroll">
+    <header class="msheet__hero">
+      <div class="msheet__avatar">
+        <%- profile.avatarLarge %>
+        <span class="msheet__dot <%= profile.presence.online ? 'is-online' : '' %>" data-presence-dot aria-hidden="true"></span>
+      </div>
+      <div class="msheet__identity">
+        <h2 class="msheet__name" id="<%= panel ? 'drawer-title' : 'msheet-title' %>">
+          <span><%= profile.fullName %></span>
+          <% if (profile.verified) { %><%- verifiedBadge({ size: 26 }) %><% } %><% if (profile.certified) { %><%- certifiedBadge({ size: 26 }) %><% } %>
+        </h2>
+        <%- include('../presence', { status: profile.presence, extraClass: 'msheet__presence' }) %>
+        <ul class="msheet__badges">
+          <% if (profile.countryCode) { %><li class="msheet__badge"><%- flag(profile.countryCode, { size: 18 }) %> <%= profile.countryName %></li><% } %>
+          <% if (profile.memberSince) { %><li class="msheet__badge"><%- icon('calendar', { size: 14 }) %> Membre depuis <%= fmt.formatMonthYear(profile.memberSince) %></li><% } %>
+          <% if (profile.languages.length) { %><li class="msheet__badge"><%- icon('languages', { size: 14 }) %> <%= profile.languages.join(', ') %></li><% } %>
+        </ul>
+      </div>
+
+      <dl class="msheet__stats">
+        <div>
+          <dt>Note</dt>
+          <% if (profile.rating) { %>
+            <dd><span class="msheet__star"><%- icon('star', { size: 17 }) %></span><%= profile.rating.toFixed(1).replace('.', ',') %>/5 <small class="msheet__count-reviews">(<%= profile.reviewsCount %> avis)</small></dd>
+          <% } else { %><dd>—</dd><dd class="msheet__hint">Pas encore d'avis</dd><% } %>
+        </div>
+        <div><dt>Plafond</dt><dd><%= profile.limitLabel %></dd></div>
+        <div>
+          <dt>Transactions</dt>
+          <dd><%= fmt.formatNumber(profile.transactions) %></dd>
+        </div>
+      </dl>
+    </header>
+
+    <section class="msheet__section" aria-labelledby="ms-about-<%= profile.slug %>">
+      <h3 id="ms-about-<%= profile.slug %>">Présentation</h3>
+      <p class="msheet__bio"><%= profile.bio %></p>
+    </section>
+
+    <section class="msheet__section" aria-labelledby="ms-accounts-<%= profile.slug %>">
+      <h3 id="ms-accounts-<%= profile.slug %>">Comptes proposés <span class="msheet__count"><%= profile.accounts.length %></span></h3>
+      <ul class="msheet__accounts">
+        <% profile.accounts.forEach((a) => { %>
+          <li class="macc">
+            <span class="macc__logo"><%- serviceLogo(a.type, { size: 24 }) %></span>
+            <span class="macc__main">
+              <span class="macc__name"><%= a.typeName %><% if (a.bank) { %> <span class="macc__bank">· <%= a.bank %></span><% } %></span>
+              <span class="macc__meta">
+                <span><%- flag(a.country, { size: 16 }) %> <%= a.countryName %></span>
+                <span><%- icon('wallet', { size: 13 }) %> <%= a.currency %></span>
+              </span>
+              <%# Tarifs cochés par le mandataire : prix sur 100 (100 € = 65 000 FCFA) et pourcentage sur la transaction %>
+              <% if (a.rateLabel || a.feeLabel) { %>
+                <span class="macc__rates">
+                  <% if (a.rateLabel) { %><span class="macc__rate"><%- icon('coins', { size: 13 }) %> <%= a.rateLabel %></span><% } %>
+                  <% if (a.feeLabel) { %><span class="macc__rate"><%- icon('percent', { size: 13 }) %> Pourcentage : <%= a.feeLabel %></span><% } %>
+                </span>
+              <% } %>
+            </span>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <section class="msheet__section" aria-labelledby="ms-reviews-<%= profile.slug %>">
+      <div class="msheet__reviews-head">
+        <h3 id="ms-reviews-<%= profile.slug %>">Avis clients</h3>
+        <% if (profile.rating) { %>
+          <p class="msheet__score"><strong><%= profile.rating.toFixed(1).replace('.', ',') %></strong>
+            <span class="msheet__stars" aria-hidden="true"><% for (let i = 1; i <= 5; i++) { %><%- icon('star', { size: 15, className: i <= Math.round(profile.rating) ? 'is-on' : '' }) %><% } %></span>
+            <span class="msheet__hint"><%= profile.reviewsCount %> avis</span>
+          </p>
+        <% } %>
+      </div>
+      <ul class="mrevs">
+        <% profile.reviews.forEach((r) => { %>
+          <li class="mrev">
+            <div class="mrev__head">
+              <span class="mrev__initial" aria-hidden="true"><%= r.author[0] %></span>
+              <div><strong><%= r.author %></strong><p><%= fmt.formatDate(r.date) %></p></div>
+              <span class="msheet__stars" role="img" aria-label="<%= r.rating %> sur 5"><% for (let i = 1; i <= 5; i++) { %><%- icon('star', { size: 13, className: i <= r.rating ? 'is-on' : '' }) %><% } %></span>
+            </div>
+            <p class="mrev__text"><%= r.comment %></p>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  </div>
+
+  <footer class="msheet__actions">
+    <% if (preview) { %>
+      <a class="btn btn--primary btn--lg msheet__message" href="/mandataire/profil" <% if (!panel) { %>data-open-myprofile<% } %>><%- icon('pencil', { size: 17 }) %> Modifier mon profil</a>
+      <a class="btn btn--ghost-border btn--lg" href="/mandataire/comptes" data-drawer-native><%- icon('wallet', { size: 17 }) %> Gérer mes comptes</a>
+    <% } else { %>
+      <a class="btn btn--primary btn--lg msheet__message" href="<%= chatHref %>" <% if (!panel && !isPublic) { %>data-open-chat="<%= profile.slug %>"<% } %> <% if (isPublic) { %>data-drawer-native<% } %>><%- icon('message-circle', { size: 18 }) %> Envoyer un message</a>
+      <a class="btn btn--ghost msheet__report" href="/aide?sujet=signalement&amp;mandataire=<%= encodeURIComponent(profile.slug) %>#contact" data-drawer-native><%- icon('flag', { size: 15 }) %> Signaler</a>
+    <% } %>
+  </footer>
+</article>

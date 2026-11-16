@@ -1,0 +1,27 @@
+<%#
+  Zone des notifications toast (en haut, au centre). Les messages flash du serveur sont rendus ici, visibles même
+  sans JavaScript ; public/js/app.js gère la fermeture (bouton, fin du compte à rebours) et crée les toasts suivants.
+  Chaque élément : { type, message, title? } ; titre par défaut selon le type.
+%>
+<%
+  const TOAST = {
+    success: { title: "C'est fait !", glyph: '<path d="M20 6 9 17l-5-5"/>' },
+    danger: { title: 'Oups !', glyph: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>' },
+    warning: { title: 'Attention', glyph: '<path d="M12 7v6"/><path d="M12 17.5h.01"/>' },
+    info: { title: 'Bon à savoir', glyph: '<path d="M12 11v6"/><path d="M12 7.5h.01"/>' },
+  };
+  const glyph = (type) => `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${TOAST[type].glyph}</svg>`;
+%>
+<div class="toast-region" id="toast-region" aria-live="polite" aria-relevant="additions">
+  <% (flash || []).forEach((item) => { const type = TOAST[item.type] ? item.type : 'info'; %>
+    <div class="toast toast--<%= type %>" role="<%= type === 'danger' ? 'alert' : 'status' %>">
+      <span class="toast__icon"><%- glyph(type) %></span>
+      <div class="toast__body">
+        <p class="toast__title"><%= item.title || TOAST[type].title %></p>
+        <p class="toast__message"><%= item.message %></p>
+      </div>
+      <button type="button" class="toast__close" aria-label="Fermer la notification"><%- icon('x', { size: 16 }) %></button>
+      <span class="toast__progress" aria-hidden="true"></span>
+    </div>
+  <% }) %>
+</div>

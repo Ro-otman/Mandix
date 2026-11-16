@@ -1,0 +1,16 @@
+<%# Modale de confirmation partagée, pilotée par app.js pour les <form data-confirm="…">. %>
+<dialog class="modal" id="confirm-dialog" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+  <div class="modal__header">
+    <span class="modal__icon"><%- icon('triangle-alert', { size: 22 }) %></span>
+    <div>
+      <h2 class="modal__title" id="confirm-dialog-title" data-confirm-title>Confirmer cette action</h2>
+    </div>
+  </div>
+  <div class="modal__body">
+    <p id="confirm-dialog-message" data-confirm-message></p>
+  </div>
+  <div class="modal__footer">
+    <button type="button" class="btn" data-modal-close autofocus>Annuler</button>
+    <button type="button" class="btn btn--primary" data-confirm-accept>Confirmer</button>
+  </div>
+</dialog>

@@ -1,0 +1,39 @@
+<%# Aperçu du layout de tableau de bord (développement uniquement). Aucune donnée : uniquement des états de chargement et vides. %>
+<div class="alert alert--warning sg-preview-alert">
+  <%- icon('construction', { size: 18 }) %>
+  <p>Aperçu de mise en page — les données réelles seront branchées dans les phases suivantes.</p>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1><%= previewHeading %></h1>
+    <p>Structure commune : menu latéral, barre supérieure, indicateurs, panneaux.</p>
+  </div>
+  <a class="btn btn--primary" href="/dev/styleguide"><%- icon('arrow-left', { size: 18 }) %> Guide de style</a>
+</div>
+
+<div class="stats-grid">
+  <% previewStats.forEach((stat) => { %>
+    <div class="card stat">
+      <div class="stat__top"><span><%= stat.label %></span><span class="stat__icon"><%- icon(stat.icon, { size: 18 }) %></span></div>
+      <span class="skeleton skeleton--title" aria-label="Chargement"></span>
+      <span class="stat__hint">Donnée disponible prochainement</span>
+    </div>
+  <% }) %>
+</div>
+
+<div class="panel-grid">
+  <section class="card">
+    <header class="card__header"><h2 class="card__title">Activité récente</h2></header>
+    <%- include('../partials/empty-state', { emptyIllustration: 'search', emptyTitle: 'Aucune activité pour le moment',
+          emptyText: 'Les dernières actions apparaîtront ici.', emptyAction: null }) %>
+  </section>
+  <section class="card">
+    <header class="card__header"><h2 class="card__title">Notifications</h2></header>
+    <div class="card__body stack">
+      <span class="skeleton skeleton--text"></span>
+      <span class="skeleton skeleton--text"></span>
+      <span class="skeleton skeleton--short"></span>
+    </div>
+  </section>
+</div>

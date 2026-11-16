@@ -1,0 +1,56 @@
+<%# Liste des clients (pseudo + e-mail), triable. Locaux : clients (triés), tri (clé active), sorts ([{ key, label }]). %>
+<%- include('../partials/dash/page-head', { heading: 'Clients', sub: 'Comptes clients et activité. Triez pour repérer les plus actifs ; suspendez un compte qui ne respecte pas les règles.' }) %>
+
+<div class="toolbar">
+  <nav class="seg clients-sort" aria-label="Trier les clients">
+    <span class="clients-sort__label"><%- icon('list-ordered', { size: 16 }) %> Trier par</span>
+    <% sorts.forEach((s) => { %>
+      <a class="seg__item <%= s.key === tri ? 'is-active' : '' %>" href="/admin/clients<%= s.key === 'transactions' ? '' : `?tri=${s.key}` %>" <%- s.key === tri ? 'aria-current="true"' : '' %>><%= s.label %></a>
+    <% }) %>
+  </nav>
+  <form class="toolbar__search" role="search" method="get" action="/admin/clients">
+    <% if (tri !== 'transactions') { %><input type="hidden" name="tri" value="<%= tri %>"><% } %>
+    <div class="input-group"><%- icon('search', { size: 17 }) %><label class="visually-hidden" for="cq">Rechercher un client</label><input class="input" id="cq" name="q" type="search" value="<%= typeof q !== 'undefined' ? q : '' %>" placeholder="Pseudo ou e-mail…"></div>
+  </form>
+</div>
+
+<section class="panel panel--flush">
+  <div class="table-wrap">
+    <table class="table table--responsive clients-table">
+      <thead>
+        <tr>
+          <th scope="col" class="num">#</th>
+          <th scope="col">Client</th>
+          <th scope="col" class="num <%= tri === 'transactions' ? 'is-sorted' : '' %>">Transactions</th>
+          <th scope="col" class="num <%= tri === 'volume' ? 'is-sorted' : '' %>">Volume</th>
+          <th scope="col" class="num <%= tri === 'conversations' ? 'is-sorted' : '' %>">Conversations</th>
+          <th scope="col" class="<%= tri === 'activite' ? 'is-sorted' : '' %>">Dernière activité</th>
+          <th scope="col" class="<%= tri === 'inscription' ? 'is-sorted' : '' %>">Inscrit le</th>
+          <th scope="col">Statut</th>
+          <th scope="col"><span class="visually-hidden">Action</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% clients.forEach((c, i) => { %>
+          <tr>
+            <td data-label="Rang" class="num clients-rank"><%= i + 1 %></td>
+            <td data-label="Client"><div class="cell-person"><span class="initial-avatar initial-avatar--sm"><%= c.name.replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 2).toUpperCase() %></span><div><strong><%= c.name %></strong><span class="text-muted text-sm"><%= c.email %></span></div></div></td>
+            <td data-label="Transactions" class="num"><strong><%= fmt.formatNumber(c.transactions) %></strong></td>
+            <td data-label="Volume" class="num"><%= fmt.formatEur(c.volumeEur) %></td>
+            <td data-label="Conversations" class="num"><%= fmt.formatNumber(c.conversations) %></td>
+            <td data-label="Dernière activité"><%= fmt.formatDateTime(c.lastActive) %></td>
+            <td data-label="Inscrit le"><%= fmt.formatDate(c.joined) %></td>
+            <td data-label="Statut"><%- include('../partials/status-badge', { group: 'account', value: c.status }) %></td>
+            <td data-label="">
+              <% if (c.status === 'active') { %>
+                <form method="post" action="/admin/comptes/<%= c.id %>/suspendre" data-confirm="<%= c.name %> ne pourra plus se connecter ni écrire aux mandataires." data-confirm-title="Suspendre ce client ?" data-confirm-label="Suspendre" data-confirm-tone="danger"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="retour" value="/admin/clients"><button class="btn btn--ghost-border btn--sm" type="submit">Suspendre</button></form>
+              <% } else { %>
+                <form method="post" action="/admin/comptes/<%= c.id %>/reactiver" data-confirm="<%= c.name %> pourra de nouveau utiliser <%= appName %>." data-confirm-title="Réactiver ce client ?" data-confirm-label="Réactiver"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="retour" value="/admin/clients"><button class="btn btn--secondary btn--sm" type="submit">Réactiver</button></form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>

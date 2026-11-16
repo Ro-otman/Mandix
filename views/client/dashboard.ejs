@@ -1,0 +1,27 @@
+<%#
+  Accueil du client : barre de recherche + marketplace complète des mandataires.
+  Locaux : filters, results, countries, accountTypes, activeFilterCount.
+%>
+<h1 class="visually-hidden">Trouver un mandataire</h1>
+
+<h2 class="dash-title" id="search-title">Recherche</h2>
+<%- include('../partials/search-bar', { action: '/client/dashboard', idPrefix: 'd' }) %>
+
+<div class="market-count">
+  <h2 class="dash-title">Mandataires disponibles</h2>
+  <% if (activeFilterCount) { %>
+    <a class="market-count__reset" href="/client/dashboard"><%- icon('x', { size: 15 }) %> Effacer la recherche</a>
+  <% } %>
+</div>
+
+<% if (results.length) { %>
+  <div class="pro-grid">
+    <% results.forEach((pro) => { %><%- include('../partials/mandataire-card', { pro, profileHref: '/client/mandataires/' + pro.slug, profileInPanel: true }) %><% }) %>
+  </div>
+<% } else { %>
+  <div class="panel">
+    <%- include('../partials/empty-state', { emptyTitle: 'Aucun mandataire ne correspond', emptyText: 'Essayez un autre nom, un autre pays ou une somme plus basse.', emptyAction: { href: '/client/dashboard', label: 'Voir tous les mandataires' } }) %>
+  </div>
+<% } %>
+
+<p class="brand-note">Les noms et logos des services cités appartiennent à leurs propriétaires. Mandix n'est affilié à aucun d'eux et ne fait transiter aucun paiement.</p>

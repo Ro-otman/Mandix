@@ -1,0 +1,54 @@
+<section class="page-hero">
+  <div class="container about-hero__grid">
+   <div>
+    <nav aria-label="Fil d'Ariane">
+      <ol class="breadcrumb"><li><a href="/">Accueil</a></li><li aria-hidden="true">/</li><li aria-current="page">À propos</li></ol>
+    </nav>
+    <h1 data-hero-item>Rendre l'accompagnement financier plus accessible et plus sûr</h1>
+    <p data-hero-item>
+      <%= appName %> aide chacun à trouver, près de chez soi, un professionnel fiable pour ses démarches
+      auprès des banques, institutions de microfinance, assureurs et émetteurs de monnaie électronique.
+    </p>
+   </div>
+    <div class="about-hero__photo" data-hero-item><%- include('../partials/photo', { slot: 'apropos-conseil', eager: true }) %></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container grid grid--2">
+    <div class="stack-lg" data-reveal>
+      <div class="stack">
+        <h2>Notre mission</h2>
+        <p class="text-muted">
+          Passer d'un compte à un autre (PayPal, Wise, virement, crypto…) n'est pas toujours simple.
+          <%= appName %> met les clients en relation avec des mandataires qui disposent de ces comptes, et encadre
+          chaque transaction : messagerie guidée, preuves, délais et évaluations.
+        </p>
+      </div>
+      <div class="stack">
+        <h2>Nos engagements</h2>
+        <ul class="check-list">
+          <li><%- icon('circle-check', { size: 18 }) %><span>Une messagerie guidée, étape par étape, preuves à l'appui.</span></li>
+          <li><%- icon('circle-check', { size: 18 }) %><span>Un examen par notre équipe en cas de paiement contesté.</span></li>
+          <li><%- icon('circle-check', { size: 18 }) %><span>Des avis réservés aux clients réellement accompagnés.</span></li>
+          <li><%- icon('circle-check', { size: 18 }) %><span>Une traçabilité de toutes les décisions de notre équipe.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <aside class="card card--padded stack" data-reveal>
+      <span class="feature__icon"><%- icon('shield-alert', { size: 22 }) %></span>
+      <h3>Ce que nous ne faisons pas</h3>
+      <ul class="check-list check-list--negative">
+        <li><%- icon('ban', { size: 18 }) %><span>Détenir, collecter ou transférer de l'argent.</span></li>
+        <li><%- icon('ban', { size: 18 }) %><span>Ouvrir ou gérer des comptes bancaires.</span></li>
+        <li><%- icon('ban', { size: 18 }) %><span>Effectuer des dépôts, retraits ou virements.</span></li>
+        <li><%- icon('ban', { size: 18 }) %><span>Vous demander vos codes ou identifiants bancaires.</span></li>
+      </ul>
+      <div class="alert alert--warning">
+        <%- icon('triangle-alert', { size: 18 }) %>
+        <p>Si quelqu'un vous demande vos codes bancaires en se présentant comme <%= appName %>, ne répondez pas et signalez-le.</p>
+      </div>
+    </aside>
+  </div>
+</section>

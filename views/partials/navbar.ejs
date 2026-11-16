@@ -1,0 +1,80 @@
+<header class="site-header">
+  <div class="container">
+    <div class="navbar">
+      <%- include('logo') %>
+
+      <nav class="navbar__nav" aria-label="Navigation principale">
+        <ul class="navbar__menu">
+          <% publicMenu.forEach((item) => { %>
+            <li>
+              <a class="navbar__link" href="<%= item.href %>" <%- isActive(item.href) ? 'aria-current="page"' : '' %>>
+                <%- icon(item.icon, { size: 16, strokeWidth: 2 }) %><span><%= item.label %></span>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </nav>
+
+      <div class="navbar__actions">
+        <% if (currentUser) { %>
+          <% if (currentUser.role === 'client') { %>
+            <a class="nav-btn nav-btn--pro" href="/espace-mandataire">
+              <span class="nav-btn__badge" aria-hidden="true"><%- icon('briefcase-business', { size: 14 }) %></span>
+              Devenir prestataire
+            </a>
+            <span class="navbar__divider" aria-hidden="true"></span>
+          <% } %>
+          <a class="nav-btn nav-btn--primary" href="<%= currentUser.dashboardPath %>"><%- icon('layout-dashboard', { size: 16 }) %> Mon espace</a>
+        <% } else { %>
+          <a class="nav-btn nav-btn--pro" href="/espace-mandataire">
+            <span class="nav-btn__badge" aria-hidden="true"><%- icon('briefcase-business', { size: 14 }) %></span>
+            Devenir prestataire
+          </a>
+          <span class="navbar__divider" aria-hidden="true"></span>
+          <a class="nav-btn nav-btn--ghost" href="/connexion"><%- icon('log-in', { size: 16 }) %> Connexion</a>
+          <a class="nav-btn nav-btn--primary" href="/inscription"><%- icon('user-plus', { size: 16 }) %> Inscription</a>
+        <% } %>
+      </div>
+
+      <%- include('theme-toggle') %>
+
+      <button class="navbar__toggle" type="button" data-nav-toggle
+              aria-controls="mobile-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <span data-icon-open><%- icon('menu', { size: 22 }) %></span>
+        <span data-icon-close hidden><%- icon('x', { size: 22 }) %></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-nav" id="mobile-nav" hidden>
+    <nav aria-label="Navigation mobile">
+      <ul class="mobile-nav__list">
+        <% publicMenu.forEach((item) => { %>
+          <li>
+            <a class="mobile-nav__link" href="<%= item.href %>" <%- isActive(item.href) ? 'aria-current="page"' : '' %>>
+              <span class="mobile-nav__icon"><%- icon(item.icon, { size: 18 }) %></span>
+              <span><%= item.label %></span>
+              <%- icon('chevron-right', { size: 18, className: 'mobile-nav__chevron' }) %>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </nav>
+    <div class="mobile-nav__actions">
+      <% if (currentUser) { %>
+        <a class="nav-btn nav-btn--primary nav-btn--lg" href="<%= currentUser.dashboardPath %>">Mon espace</a>
+        <% if (currentUser.role === 'client') { %>
+          <a class="nav-btn nav-btn--pro nav-btn--lg" href="/espace-mandataire">
+            <span class="nav-btn__badge" aria-hidden="true"><%- icon('briefcase-business', { size: 14 }) %></span> Devenir prestataire
+          </a>
+        <% } %>
+      <% } else { %>
+        <a class="nav-btn nav-btn--primary nav-btn--lg" href="/inscription"><%- icon('user-plus', { size: 18 }) %> Créer un compte</a>
+        <a class="nav-btn nav-btn--ghost nav-btn--lg nav-btn--bordered" href="/connexion"><%- icon('log-in', { size: 18 }) %> Se connecter</a>
+        <a class="nav-btn nav-btn--pro nav-btn--lg" href="/espace-mandataire">
+          <span class="nav-btn__badge" aria-hidden="true"><%- icon('briefcase-business', { size: 14 }) %></span> Devenir prestataire
+        </a>
+      <% } %>
+    </div>
+  </div>
+</header>

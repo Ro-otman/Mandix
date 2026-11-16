@@ -1,0 +1,33 @@
+<%#
+  Nouveau mot de passe (lien reçu par e-mail). Locaux : token, valid (lien encore valable), errors.
+  Le formulaire est renvoyé à la même adresse ; le jeton n'est jamais réaffiché ailleurs.
+%>
+<% const err = (k) => errors && errors[k]; %>
+<div class="auth-card">
+  <% if (!valid) { %>
+    <span class="auth-badge" aria-hidden="true"><%- icon('link-2-off', { size: 22 }) %></span>
+    <h1 class="auth-title">Lien <span class="auth-hl">expiré</span></h1>
+    <%- include('../partials/form-alert', { alertType: 'warning', formTitle: 'Lien expiré', formError: 'Ce lien a déjà servi ou a expiré.' }) %>
+    <a class="btn btn--primary btn--lg btn--block" href="/mot-de-passe-oublie"><%- icon('send', { size: 18 }) %> Recevoir un nouveau lien</a>
+  <% } else { %>
+    <span class="auth-badge" aria-hidden="true"><%- icon('lock', { size: 22 }) %></span>
+    <h1 class="auth-title">Nouveau <span class="auth-hl">mot de passe</span></h1>
+    <form class="auth-form" method="post" action="/reinitialisation/<%= encodeURIComponent(token) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label class="field__label" for="password">Nouveau mot de passe</label>
+        <div class="input-group input-group--action"><%- icon('lock', { size: 18 }) %><input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required data-strength aria-describedby="strength-text<%= err('password') ? ' password-error' : '' %>" <%- err('password') ? 'aria-invalid="true"' : '' %>><button class="input-action" type="button" data-password-toggle="password" aria-label="Afficher le mot de passe" aria-pressed="false"><%- icon('eye', { size: 18 }) %></button></div>
+        <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="field__hint" id="strength-text" data-strength-text>10 caractères minimum, une lettre et un chiffre.</p>
+        <%- include('../partials/field-error', { id: 'password-error', message: err('password') }) %>
+      </div>
+      <div class="field">
+        <label class="field__label" for="password-confirm">Confirmation</label>
+        <div class="input-group input-group--action"><%- icon('lock-keyhole', { size: 18 }) %><input class="input" id="password-confirm" name="passwordConfirm" type="password" autocomplete="new-password" maxlength="128" required data-password-confirm="password" aria-describedby="password-confirm-error" <%- err('passwordConfirm') ? 'aria-invalid="true"' : '' %>><button class="input-action" type="button" data-password-toggle="password-confirm" aria-label="Afficher le mot de passe" aria-pressed="false"><%- icon('eye', { size: 18 }) %></button></div>
+        <p class="field__error" id="password-confirm-error" data-password-confirm-error <%= err('passwordConfirm') ? '' : 'hidden' %>><%= err('passwordConfirm') || 'Les deux mots de passe ne correspondent pas.' %></p>
+      </div>
+      <button class="btn btn--primary btn--lg btn--block" type="submit" data-busy-label="Enregistrement…"><%- icon('check', { size: 18 }) %> Enregistrer</button>
+    </form>
+  <% } %>
+  <p class="auth-switch"><a href="/connexion"><%- icon('arrow-left', { size: 15 }) %> Retour à la connexion</a></p>
+</div>

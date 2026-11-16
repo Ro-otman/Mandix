@@ -1,0 +1,8 @@
+<%#
+  Bouton mode jour / mode nuit (public/js/boot.js). Le choix est mémorisé sur cet appareil ;
+  sans choix, le site suit la préférence du système. Libellé et état mis à jour par le script.
+%>
+<button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Activer le mode nuit" title="Mode nuit">
+  <span class="theme-toggle__icon theme-toggle__icon--moon"><%- icon('moon', { size: 18 }) %></span>
+  <span class="theme-toggle__icon theme-toggle__icon--sun"><%- icon('sun', { size: 18 }) %></span>
+</button>

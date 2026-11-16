@@ -1,0 +1,38 @@
+<%#
+  Panneau latéral des espaces client et mandataire : messages, notifications, fiches et profil.
+  Local : drawerBase ("/client" ou "/mandataire") : préfixe des fragments chargés.
+  Piloté par public/js/drawer.js (glisse depuis la droite, le reste de la page est flouté).
+  <dialog> modal : focus piégé dans le panneau, Échap ferme, contenu de la page inerte.
+%>
+<dialog class="drawer" data-drawer data-drawer-base="<%= typeof drawerBase !== 'undefined' ? drawerBase : '/client' %>" aria-labelledby="drawer-title">
+  <div class="drawer__panel">
+    <div class="drawer__content" data-drawer-content></div>
+  </div>
+
+  <template data-drawer-skeleton>
+    <div class="drawer-skeleton">
+      <h2 class="visually-hidden" id="drawer-title">Chargement…</h2>
+      <div class="drawer-skeleton__head">
+        <span class="skeleton skeleton--circle"></span>
+        <div class="drawer-skeleton__lines"><span class="skeleton skeleton--title"></span><span class="skeleton skeleton--short"></span></div>
+      </div>
+      <div class="drawer-skeleton__body">
+        <span class="skeleton drawer-skeleton__bubble"></span>
+        <span class="skeleton drawer-skeleton__bubble drawer-skeleton__bubble--me"></span>
+        <span class="skeleton drawer-skeleton__bubble"></span>
+      </div>
+      <p class="visually-hidden" role="status">Chargement en cours</p>
+    </div>
+  </template>
+
+  <template data-drawer-error>
+    <div class="drawer-error">
+      <h2 class="drawer-error__title" id="drawer-title"><%- icon('wifi-off', { size: 22 }) %> Impossible d'afficher ce contenu</h2>
+      <p>Vérifiez votre connexion, ou ouvrez la page complète.</p>
+      <div class="drawer-error__actions">
+        <a class="btn btn--primary" href="<%= typeof drawerBase !== 'undefined' ? drawerBase : '/client' %>" data-drawer-fallback>Ouvrir la page</a>
+        <button class="btn btn--ghost-border" type="button" data-drawer-close>Fermer</button>
+      </div>
+    </div>
+  </template>
+</dialog>

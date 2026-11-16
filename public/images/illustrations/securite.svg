@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none">
+  <ellipse cx="160" cy="214" rx="120" ry="11" fill="#D6E3FF"/>
+  <!-- bouclier -->
+  <path d="M160 30c23 16 46 23 70 24v54c0 47-30 76-70 90-40-14-70-43-70-90V54c24-1 47-8 70-24Z" fill="#FFFFFF" stroke="#0B1B3A" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M160 48c17 11 34 17 52 18v42c0 36-22 58-52 69" stroke="#EAF1FF" stroke-width="6" stroke-linecap="round"/>
+  <!-- cadenas -->
+  <path d="M138 118v-16a22 22 0 0 1 44 0v16" stroke="#0B1B3A" stroke-width="7" stroke-linecap="round"/>
+  <rect x="124" y="114" width="72" height="56" rx="12" fill="#E9B23F" stroke="#0B1B3A" stroke-width="2.5"/>
+  <circle cx="160" cy="136" r="7" fill="#0B1B3A"/>
+  <rect x="156.5" y="139" width="7" height="16" rx="3.5" fill="#0B1B3A"/>
+  <!-- validation -->
+  <circle cx="236" cy="62" r="16" fill="#0C6B58" stroke="#0B1B3A" stroke-width="2.5"/>
+  <path d="m229 62 5 5 10-10" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- clé -->
+  <circle cx="70" cy="150" r="11" fill="#FFFFFF" stroke="#0B1B3A" stroke-width="2.5"/>
+  <circle cx="70" cy="150" r="3.5" fill="#1747B5"/>
+  <path d="M81 150h26M99 150v8M106 150v6" stroke="#0B1B3A" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- détails -->
+  <circle cx="74" cy="78" r="4" fill="#E9B23F"/>
+  <circle cx="262" cy="150" r="3" fill="#1747B5"/>
+  <path d="M248 186h22" stroke="#D6E3FF" stroke-width="4" stroke-linecap="round"/>
+</svg>

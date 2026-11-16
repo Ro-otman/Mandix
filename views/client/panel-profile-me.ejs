@@ -1,0 +1,31 @@
+<%# Fragment chargé dans le panneau latéral (public/js/drawer.js) : profil du client. Local : client. %>
+<div class="drawer-view drawer-view--myprofile" data-drawer-view="myprofile">
+  <div class="msheet__bar">
+    <button class="btn btn--ghost btn--icon drawer__back" type="button" data-drawer-back aria-label="Retour" hidden><%- icon('arrow-left', { size: 20 }) %></button>
+    <h2 class="msheet__bar-title proprof__title" id="drawer-title">Mon profil</h2>
+    <a class="btn btn--ghost btn--icon" href="/client/profil" data-drawer-native aria-label="Ouvrir la page Mon profil" title="Ouvrir en pleine page"><%- icon('maximize-2', { size: 18 }) %></a>
+    <button class="btn btn--ghost btn--icon drawer__close" type="button" data-drawer-close aria-label="Fermer le profil"><%- icon('x', { size: 20 }) %></button>
+  </div>
+
+  <form class="proprof" method="post" action="/client/profil">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="proprof__scroll">
+      <section class="proprof__summary">
+        <div class="procard procard--compact">
+          <div class="procard__avatar"><%- avatarSvg(client.avatar, { size: 72 }) %></div>
+          <div class="procard__identity">
+            <p class="procard__name"><span><%= client.pseudo %></span></p>
+            <p class="text-muted text-sm">Membre depuis <%= fmt.formatDate(client.memberSince) %></p>
+          </div>
+        </div>
+      </section>
+      <section class="proprof__section">
+        <h3>Informations du compte</h3>
+        <%- include('../partials/dash/client-profile-fields', { client, idPrefix: 'pp' }) %>
+      </section>
+    </div>
+    <footer class="msheet__actions">
+      <button class="btn btn--primary btn--lg msheet__message" type="submit"><%- icon('check', { size: 18 }) %> Enregistrer</button>
+    </footer>
+  </form>
+</div>

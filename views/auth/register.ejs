@@ -1,0 +1,29 @@
+<%# Inscription client. Locaux : errors, values, formError. Après l'envoi : page « Vérifiez votre boîte e-mail ». %>
+<div class="auth-card">
+  <h1 class="auth-title">Créez votre <span class="auth-hl">compte</span></h1>
+  <p class="auth-sub">Moins d'une minute pour faire vos transactions avec des mandataires du monde entier.</p>
+
+  <div class="account-type" role="group" aria-label="Type de compte">
+    <span class="account-type__item is-active" aria-current="true">
+      <span class="account-type__icon account-type__icon--blue"><%- icon('user-round', { size: 20 }) %></span>
+      <span class="account-type__text"><strong>Je cherche un professionnel</strong><small>Compte client</small></span>
+      <span class="account-type__mark" aria-hidden="true"><%- icon('check', { size: 13, strokeWidth: 3 }) %></span>
+    </span>
+    <a class="account-type__item account-type__item--link" href="/mandataire/inscription">
+      <span class="account-type__icon account-type__icon--gold"><%- icon('briefcase-business', { size: 20 }) %></span>
+      <span class="account-type__text"><strong>Je suis un professionnel</strong><small>Compte pro</small></span>
+      <span class="account-type__arrow" aria-hidden="true"><%- icon('arrow-right', { size: 16 }) %></span>
+    </a>
+  </div>
+
+  <%- include('../partials/form-alert', { formError }) %>
+
+  <form class="auth-form" method="post" action="/inscription">
+    <%- include('_register-fields', { pseudoPlaceholder: 'Ex. AwaD' }) %>
+
+    <button class="btn btn--primary btn--lg btn--block auth-submit" type="submit" data-busy-label="Création du compte…">
+      Créer mon compte <%- icon('arrow-right', { size: 18 }) %>
+    </button>
+    <p class="auth-note"><%- icon('lock', { size: 14 }) %> Seul votre pseudo est visible par les mandataires.</p>
+  </form>
+</div>

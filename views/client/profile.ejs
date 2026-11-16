@@ -1,0 +1,17 @@
+<%# Profil du client (page complète) : un pseudo et une adresse e-mail, rien d'autre. Local : client. %>
+<%- include('../partials/dash/page-head', { heading: 'Mon profil' }) %>
+
+<div class="settings-grid">
+  <aside class="panel profile-card">
+    <div class="profile-card__avatar"><%- avatarSvg(client.avatar, { size: 96 }) %></div>
+    <p class="profile-card__name"><%= client.pseudo %></p>
+    <p class="text-muted text-sm">Membre depuis <%= fmt.formatDate(client.memberSince) %></p>
+  </aside>
+
+  <form class="panel form-panel" method="post" action="/client/profil">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="panel__title">Informations du compte</h2>
+    <%- include('../partials/dash/client-profile-fields', { client, idPrefix: 'p' }) %>
+    <div class="form-actions"><button class="btn btn--primary" type="submit" data-busy-label="Enregistrement…"><%- icon('check', { size: 17 }) %> Enregistrer</button></div>
+  </form>
+</div>

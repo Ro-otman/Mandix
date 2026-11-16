@@ -1,0 +1,19 @@
+node_modules/
+# Secrets (mots de passe, clés) : seul le modèle .env.example est versionné
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+
+# Documents privés téléversés : jamais versionnés
+storage/private/**
+!storage/private/**/
+!storage/private/**/.gitkeep
+
+# Fichiers front construits (npm run build) : régénérés à chaque déploiement
+public/dist/
+
+# E-mails de développement (SMTP non configuré) : jamais versionnés
+storage/mail-outbox/

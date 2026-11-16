@@ -1,0 +1,6 @@
+<%#
+  Variation par rapport à la période précédente (icône + valeur, jamais la couleur seule).
+  Locaux : cur, prev, deltaSuffix (texte facultatif après la valeur), deltaIcon (taille, 14 par défaut).
+%>
+<% const p = prev ? Math.round(((cur - prev) / prev) * 100) : 0; const up = p >= 0; %>
+<p class="stat-delta <%= up ? 'is-up' : 'is-down' %>"><%- icon(up ? 'trending-up' : 'trending-down', { size: typeof deltaIcon !== 'undefined' ? deltaIcon : 14 }) %> <strong><%= p > 0 ? '+' : '' %><%= p %> %</strong><% if (typeof deltaSuffix !== 'undefined' && deltaSuffix) { %> <span><%= deltaSuffix %></span><% } %></p>

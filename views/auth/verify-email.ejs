@@ -1,0 +1,37 @@
+<%#
+  Confirmation de l'adresse e-mail. Locaux : state ('sent' après l'inscription, 'invalid' si le lien a expiré),
+  maskedEmail / hasPendingEmail (adresse mémorisée dans un cookie signé), errors, values.
+  Le renvoi du lien répond toujours de la même façon, qu'un compte en attente existe ou non.
+%>
+<% const err = (k) => errors && errors[k]; const invalid = state === 'invalid'; %>
+<div class="auth-card auth-card--center">
+  <% if (invalid) { %>
+    <span class="auth-badge auth-badge--lg" aria-hidden="true"><%- icon('link-2-off', { size: 34 }) %></span>
+    <h1 class="auth-title">Lien <span class="auth-hl">expiré</span></h1>
+    <p class="auth-sub">Ce lien de confirmation n'est plus valable : il a déjà servi, ou ses 24 heures sont écoulées. Demandez-en un nouveau ci-dessous.</p>
+  <% } else { %>
+    <span class="auth-badge auth-badge--lg auth-badge--green" aria-hidden="true"><%- icon('mail-check', { size: 34 }) %></span>
+    <h1 class="auth-title">Vérifiez votre <span class="auth-hl">boîte e-mail</span></h1>
+    <p class="auth-sub">
+      Nous venons d'envoyer un lien de confirmation<% if (maskedEmail) { %> à <strong><%= maskedEmail %></strong><% } else { %> à l'adresse que vous avez indiquée<% } %>.
+      Cliquez dessus pour activer votre compte.
+    </p>
+    <ul class="verify-tips">
+      <li><%- icon('clock-3', { size: 16 }) %> Le lien est valable 24 heures.</li>
+      <li><%- icon('inbox', { size: 16 }) %> Pensez à vérifier vos courriers indésirables.</li>
+    </ul>
+  <% } %>
+
+  <form class="auth-form" method="post" action="/verification-email/renvoyer">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (!hasPendingEmail || err('email')) { %>
+      <div class="field">
+        <label class="field__label" for="email">Adresse e-mail du compte</label>
+        <div class="input-group"><%- icon('mail', { size: 18 }) %><input class="input" id="email" name="email" type="email" autocomplete="email" required maxlength="191" placeholder="vous@exemple.com" value="<%= values.email || '' %>" <%- err('email') ? 'aria-invalid="true" aria-describedby="email-error"' : '' %>></div>
+        <%- include('../partials/field-error', { id: 'email-error', message: err('email') }) %>
+      </div>
+    <% } %>
+    <button class="btn <%= invalid ? 'btn--primary' : 'btn--ghost-border' %> btn--lg btn--block" type="submit" data-busy-label="Envoi du lien…"><%- icon('send', { size: 17 }) %> <%= invalid ? 'Recevoir un nouveau lien' : "Renvoyer l'e-mail" %></button>
+  </form>
+  <p class="auth-switch"><a href="/connexion">Retour à la connexion</a></p>
+</div>

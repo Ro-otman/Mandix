@@ -1,0 +1,31 @@
+<%# Page d'erreur illustrée. Locaux : status, title, message. %>
+<%
+  const illustration = status === 404 ? 'erreur-404' : status === 403 ? 'erreur-403' : status === 429 ? 'erreur-403' : 'erreur-500';
+  const lead = {
+    404: "Le lien est peut-être incomplet, ou la page a été déplacée.",
+    403: "Cette page est réservée à un autre espace ou nécessite une connexion.",
+    429: "Par sécurité, les tentatives sont limitées pendant quelques minutes.",
+  }[status] || "Notre équipe technique est prévenue. Réessayez dans quelques instants.";
+%>
+<section class="status-page">
+  <div class="container status-page__grid">
+    <div class="status-page__art" data-hero-item>
+      <img src="/images/illustrations/<%= illustration %>.svg" alt="" width="480" height="360">
+    </div>
+    <div class="status-page__text" data-hero-item>
+      <p class="status-page__code">Erreur <%= status %></p>
+      <h1 class="status-page__title"><%= title %></h1>
+      <p class="status-page__message"><%= message %></p>
+      <p class="status-page__lead"><%= lead %></p>
+      <div class="cluster status-page__actions">
+        <a class="btn btn--primary btn--lg" href="/"><%- icon('arrow-left', { size: 18 }) %> Retour à l'accueil</a>
+        <a class="btn btn--ghost-border btn--lg" href="/mandataires"><%- icon('search', { size: 18 }) %> Trouver un mandataire</a>
+      </div>
+      <ul class="status-page__links" aria-label="Liens utiles">
+        <li><a href="/aide"><%- icon('message-square-text', { size: 16 }) %> Centre d'aide</a></li>
+        <li><a href="/#comment-ca-marche"><%- icon('info', { size: 16 }) %> Comment ça marche</a></li>
+        <li><a href="/a-propos"><%- icon('shield-check', { size: 16 }) %> À propos de <%= appName %></a></li>
+      </ul>
+    </div>
+  </div>
+</section>

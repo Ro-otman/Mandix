@@ -1,0 +1,4 @@
+<%# Fragment chargé dans le panneau latéral (public/js/drawer.js) : une conversation. Local : t (fil). %>
+<div class="drawer-view drawer-view--chat" data-drawer-view="chat">
+  <%- include('../partials/dash/chat-thread', { t, chatRole: 'client', basePath: '/client/messages', inPanel: true }) %>
+</div>

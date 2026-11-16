@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none">
+  <ellipse cx="160" cy="214" rx="132" ry="11" fill="#EAF1FF"/>
+  <!-- ordinateur -->
+  <rect x="78" y="62" width="164" height="108" rx="12" fill="#FFFFFF" stroke="#0B1B3A" stroke-width="2.5"/>
+  <rect x="90" y="74" width="140" height="84" rx="6" fill="#EAF1FF"/>
+  <path d="m102 128 20-18 18 22 18-30 18 26 16-14 18 12" stroke="#C2412D" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M56 170h208l-12 20H68Z" fill="#D6E3FF" stroke="#0B1B3A" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="140" y="176" width="40" height="6" rx="3" fill="#0B1B3A"/>
+  <!-- engrenage -->
+  <circle cx="256" cy="66" r="21" stroke="#0B1B3A" stroke-width="9" stroke-dasharray="5.2 5.8"/>
+  <circle cx="256" cy="66" r="16" fill="#E9B23F" stroke="#0B1B3A" stroke-width="2.5"/>
+  <circle cx="256" cy="66" r="5.5" fill="#FFFFFF" stroke="#0B1B3A" stroke-width="2.5"/>
+  <!-- clé -->
+  <path d="m44 108 30-30" stroke="#1747B5" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="80" cy="72" r="12" fill="#1747B5" stroke="#0B1B3A" stroke-width="2.5"/>
+  <path d="m80 64 8 8-5 3-6-6Z" fill="#FFFFFF"/>
+  <!-- détails -->
+  <circle cx="40" cy="160" r="4" fill="#E9B23F"/>
+  <path d="M286 120v14M279 127h14" stroke="#0C6B58" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

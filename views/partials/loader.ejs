@@ -1,0 +1,12 @@
+<%# Loader unique du site : n'apparaît que si le chargement dépasse ~150 ms (voir boot.js / app.js). %>
+<div class="page-loader" id="page-loader" aria-hidden="true">
+  <div class="page-loader__inner">
+    <svg class="page-loader__mark" viewBox="0 0 64 64" width="72" height="72" focusable="false">
+      <rect width="64" height="64" rx="18" fill="#1747B5"/>
+      <path class="page-loader__m" d="M18.5 45V22l13.5 15 13.5-15v23" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle class="page-loader__dot" cx="50.5" cy="14" r="4.2" fill="#E9B23F"/>
+    </svg>
+    <div class="page-loader__bar"><span></span></div>
+    <p class="page-loader__text">Un instant, on prépare la page…</p>
+  </div>
+</div>

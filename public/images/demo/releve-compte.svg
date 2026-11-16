@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="460" viewBox="0 0 360 460" role="img" aria-label="Exemple fictif de relevé de compte">
+  <rect width="360" height="460" rx="18" fill="#f5f7fb"/>
+  <rect x="24" y="24" width="312" height="412" rx="14" fill="#fff" stroke="#e3e8f2"/>
+  <text x="48" y="66" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" fill="#0b1b3a">Relevé de compte</text>
+  <text x="48" y="88" font-family="Inter, Arial, sans-serif" font-size="11" fill="#6b7a99">Historique des opérations · 7 derniers jours</text>
+  <line x1="48" y1="106" x2="312" y2="106" stroke="#e3e8f2"/>
+  <g font-family="Inter, Arial, sans-serif" font-size="11" fill="#33415c">
+    <text x="48" y="134">08/11 · Prélèvement électricité</text><text x="312" y="134" text-anchor="end">−42,10 €</text>
+    <text x="48" y="164">07/11 · Carte · supermarché</text><text x="312" y="164" text-anchor="end">−63,80 €</text>
+    <text x="48" y="194">05/11 · Abonnement mobile</text><text x="312" y="194" text-anchor="end">−19,99 €</text>
+    <text x="48" y="224">03/11 · Retrait distributeur</text><text x="312" y="224" text-anchor="end">−80,00 €</text>
+  </g>
+  <rect x="48" y="252" width="264" height="74" rx="10" fill="#fdf3dc"/>
+  <text x="180" y="282" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" fill="#8a5a00">Aucun virement entrant</text>
+  <text x="180" y="304" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="11" fill="#8a5a00">sur la période (exemple)</text>
+  <rect x="98" y="372" width="164" height="26" rx="13" fill="#fdf3dc"/>
+  <text x="180" y="389" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" fill="#8a5a00">EXEMPLE — DÉMONSTRATION</text>
+</svg>

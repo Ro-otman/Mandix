@@ -1,0 +1,21 @@
+<%# Profil du mandataire (page complète). Locaux : pro, countries, certificationThreshold. %>
+<div class="page-header">
+  <div>
+    <h1>Mon profil</h1>
+    <p>Ce que les clients voient sur votre fiche.</p>
+  </div>
+  <a class="btn btn--ghost-border" href="/mandataire/apercu" data-open-preview><%- icon('eye', { size: 17 }) %> Voir ma page publique</a>
+</div>
+
+<div class="settings-grid">
+  <aside class="panel">
+    <%- include('../partials/dash/pro-profile-card', { pro, certificationThreshold }) %>
+  </aside>
+
+  <form class="panel form-panel" method="post" action="/mandataire/profil">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="panel__title">Présentation et localisation</h2>
+    <%- include('../partials/dash/pro-profile-fields', { pro, countries, idPrefix: 'pr' }) %>
+    <div class="form-actions"><button class="btn btn--primary" type="submit" data-busy-label="Enregistrement…"><%- icon('check', { size: 17 }) %> Enregistrer</button></div>
+  </form>
+</div>

@@ -1,0 +1,29 @@
+<%# E-mails de développement (SMTP non configuré) : les 50 derniers envois, du plus récent au plus ancien. %>
+<section class="band band--white">
+  <div class="container dev-emails">
+    <p class="kicker">Développement</p>
+    <h1>E-mails envoyés</h1>
+    <p class="page-lead">Aperçu des modèles (exemples fictifs, aucun envoi) :</p>
+    <ul class="dev-emails__previews">
+      <% [['verify', 'Confirmation · client'], ['verify-pro', 'Confirmation · mandataire'], ['exists', 'Compte déjà existant'], ['exists-pro', 'Adresse déjà prise · mandataire'], ['reset', 'Mot de passe oublié'], ['changed', 'Mot de passe modifié']].forEach(([kind, label]) => { %>
+        <li><a class="btn btn--ghost-border btn--sm" href="/dev/emails/apercu/<%= kind %>" target="_blank" rel="noopener"><%- icon('mail', { size: 15 }) %> <%= label %></a></li>
+      <% }) %>
+    </ul>
+    <h2 class="dev-emails__title">Boîte d'envoi locale</h2>
+    <p class="page-lead">Quand SMTP n'est pas configuré, les e-mails sont enregistrés dans <code>storage/mail-outbox</code> au lieu d'être envoyés. Ouvrez-en un pour suivre ses liens (confirmation, réinitialisation…).</p>
+    <% if (!emails.length) { %>
+      <div class="card card--padded"><p>Aucun e-mail pour le moment. Créez un compte ou demandez un nouveau mot de passe.</p></div>
+    <% } else { %>
+      <ul class="dev-emails__list">
+        <% emails.forEach((m) => { %>
+          <li>
+            <a class="card card--padded card--interactive dev-emails__item" href="/dev/emails/<%= m.id %>" target="_blank" rel="noopener">
+              <strong><%= m.subject %></strong>
+              <span><%= m.to %> · <%= new Date(m.date).toLocaleString('fr-FR', { timeZone: 'Africa/Porto-Novo' }) %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</section>

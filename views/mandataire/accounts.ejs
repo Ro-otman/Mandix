@@ -1,0 +1,340 @@
+<%#
+  Comptes du mandataire : ajout (catalogue des comptes de la plateforme ou « Autre »), modification, suppression.
+  Locaux : accounts, accountTypes, defaultReceive, countries, countryName, currencies (toutes les devises en cours).
+  Ajout : cases à cocher, aucune obligatoire — E-mail / RIB (où recevoir l'argent ; sans eux, le mandataire les
+  saisit dans la messagerie au moment de les envoyer) et Prix sur 100 / Pourcentage (tarifs publics, profil). Les coordonnées sont affichées en clair : cet espace n'est accessible
+  qu'au mandataire. Valeur longue : défilement horizontal (barre fine).
+  Comportements : public/js/accounts.js et public/js/rich-select.js.
+%>
+<%
+  // Options des listes de devises (Devise, Prix sur 100) : toutes les devises en cours, noms échappés.
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+  const currencyOptions = currencies.map((c) => `<option value="${esc(c.code)}">${esc(c.code)} — ${esc(c.name)}</option>`).join('');
+%>
+<% const typeOf = (slug) => accountTypes.find((t) => t.slug === slug) || { slug, name: slug, logo: null, ...defaultReceive }; %>
+<div class="page-header">
+  <div>
+    <h1>Mes comptes</h1>
+    <p>Vos comptes de réception, publiés sur votre profil dès leur ajout.</p>
+  </div>
+  <button class="btn btn--primary" type="button" data-account-add aria-haspopup="dialog"><%- icon('plus', { size: 17 }) %> Ajouter un compte</button>
+</div>
+
+<p class="accounts-count"><strong data-accounts-count><%= accounts.length %></strong> compte<%= accounts.length > 1 ? 's' : '' %> enregistré<%= accounts.length > 1 ? 's' : '' %></p>
+
+<div class="account-grid" data-accounts-grid>
+  <% accounts.forEach((a) => { const s = labels.status('service', a.status); const t = typeOf(a.type); %>
+    <article class="account-card" data-account-card data-account="<%= JSON.stringify({ id: a.id, type: a.type, country: a.country, currency: a.currency, bank: a.bank || '', receive: a.receive, receiveHolder: a.receiveHolder || '', receiveEmail: a.receiveEmail || '', receiveRib: a.receiveRib || '', receiveBic: a.receiveBic || '', receiveAddress: a.receiveAddress || '', rateLabel: a.rateLabel || '', feeLabel: a.feeLabel || '' }) %>">
+      <header class="account-card__head">
+        <span class="account-card__icon account-card__icon--logo" data-field="logo"><% if (t.logo) { %><img class="service-logo" src="<%= t.logo %>" alt="" width="26" height="26"><% } %></span>
+        <div class="account-card__heading">
+          <h2 class="account-card__title" data-field="type"><%= t.name %></h2>
+          <p class="account-card__bank" data-field="bank" <%= a.bank ? '' : 'hidden' %>><%= a.bank || '' %></p>
+        </div>
+        <span class="badge badge--<%= s.tone %> badge--dot" data-field="status"><%= s.label %></span>
+      </header>
+      <ul class="account-card__meta">
+        <li><span data-field="flag"><%- flag(a.country, { size: 18 }) %></span> <span data-field="country"><%= countryName(a.country) %></span></li>
+        <li><%- icon('wallet', { size: 14 }) %> <span data-field="currency"><%= a.currency %></span></li>
+        <li data-field="rate-row" <%= a.rateLabel ? '' : 'hidden' %>><%- icon('coins', { size: 14 }) %> <span data-field="rate"><%= a.rateLabel || '' %></span></li>
+        <li data-field="fee-row" <%= a.feeLabel ? '' : 'hidden' %>><%- icon('percent', { size: 14 }) %> <span data-field="fee"><%= a.feeLabel || '' %></span></li>
+      </ul>
+      <footer class="account-card__foot">
+        <button class="account-view" type="button" data-account-view aria-haspopup="dialog"><span class="account-view__icon"><%- icon('eye', { size: 16 }) %></span> Voir le compte</button>
+        <form class="account-card__delete-form" data-account-delete data-confirm="Ce compte ne sera plus affiché sur votre profil. Les conversations déjà ouvertes sont conservées." data-confirm-title="Supprimer ce compte ?" data-confirm-label="Supprimer" data-confirm-tone="danger">
+          <button class="account-delete" type="submit" aria-label="Supprimer ce compte"><span class="account-delete__icon"><%- icon('trash-2', { size: 16 }) %></span> Supprimer</button>
+        </form>
+      </footer>
+    </article>
+  <% }) %>
+</div>
+
+<div class="panel" data-accounts-empty <%= accounts.length ? 'hidden' : '' %>>
+  <%- include('../partials/empty-state', { emptyIllustration: 'search', emptyTitle: 'Aucun compte enregistré', emptyText: 'Ajoutez vos comptes et les coordonnées pour y recevoir de l\'argent : ils s\'afficheront sur votre profil.', emptyAction: null }) %>
+</div>
+
+<%# Modèle de carte utilisé par public/js/accounts.js pour les nouveaux comptes %>
+<template data-account-template>
+  <article class="account-card account-card--new" data-account-card>
+    <header class="account-card__head">
+      <span class="account-card__icon account-card__icon--logo" data-field="logo"></span>
+      <div class="account-card__heading">
+        <h2 class="account-card__title" data-field="type"></h2>
+        <p class="account-card__bank" data-field="bank" hidden></p>
+      </div>
+      <span class="badge badge--success badge--dot" data-field="status">Publié</span>
+    </header>
+    <ul class="account-card__meta">
+      <li><span data-field="flag"></span> <span data-field="country"></span></li>
+      <li><%- icon('wallet', { size: 14 }) %> <span data-field="currency"></span></li>
+      <li data-field="rate-row" hidden><%- icon('coins', { size: 14 }) %> <span data-field="rate"></span></li>
+      <li data-field="fee-row" hidden><%- icon('percent', { size: 14 }) %> <span data-field="fee"></span></li>
+    </ul>
+    <footer class="account-card__foot">
+        <button class="account-view" type="button" data-account-view aria-haspopup="dialog"><span class="account-view__icon"><%- icon('eye', { size: 16 }) %></span> Voir le compte</button>
+        <form class="account-card__delete-form" data-account-delete data-confirm="Ce compte ne sera plus affiché sur votre profil. Les conversations déjà ouvertes sont conservées." data-confirm-title="Supprimer ce compte ?" data-confirm-label="Supprimer" data-confirm-tone="danger">
+          <button class="account-delete" type="submit" aria-label="Supprimer ce compte"><span class="account-delete__icon"><%- icon('trash-2', { size: 16 }) %></span> Supprimer</button>
+        </form>
+      </footer>
+  </article>
+</template>
+
+<%# Informations d'un compte (rempli par public/js/accounts.js depuis la carte) %>
+<dialog class="modal account-view-modal" id="account-view" aria-labelledby="acc-view-title">
+  <div class="modal__header">
+    <span class="modal__icon acc-selected acc-selected--logo" data-view-logo></span>
+    <div class="acc-step__heading">
+      <h2 class="modal__title" id="acc-view-title" data-view-name>Compte</h2>
+      <p class="text-muted text-sm"><span class="badge badge--success badge--dot">Publié</span> sur votre profil</p>
+    </div>
+    <button class="btn btn--ghost btn--icon acc-step__close" type="button" data-modal-close aria-label="Fermer"><%- icon('x', { size: 20 }) %></button>
+  </div>
+  <div class="modal__body">
+    <dl class="acc-view">
+      <div><dt>Pays du compte</dt><dd><span data-view-flag></span> <span data-view-country></span></dd></div>
+      <div><dt>Devise</dt><dd data-view-currency></dd></div>
+      <div data-view-bank-row hidden><dt>Banque</dt><dd data-view-bank></dd></div>
+      <% [['holder', 'Titulaire'], ['email', 'E-mail'], ['rib', 'RIB'], ['bic', 'BIC'], ['address', 'Adresse'], ['legacy', 'Coordonnées de réception']].forEach(([key, label]) => { %>
+        <div class="acc-view__receive" data-view-row="<%= key %>" hidden>
+          <dt><%= label %></dt>
+          <dd>
+            <code class="account-card__value" data-view-value="<%= key %>" tabindex="0"></code>
+            <button class="btn btn--ghost-border btn--sm" type="button" data-view-copy="<%= key %>"><%- icon('copy', { size: 15 }) %> Copier</button>
+          </dd>
+        </div>
+      <% }) %>
+      <div data-view-row="rate" hidden><dt>Prix sur 100</dt><dd data-view-value="rate"></dd></div>
+      <div data-view-row="fee" hidden><dt>Pourcentage</dt><dd data-view-value="fee"></dd></div>
+    </dl>
+    <p class="field__hint">Ces coordonnées ne sont visibles que de vous, et du client à qui vous les envoyez dans la messagerie.</p>
+  </div>
+  <div class="modal__footer"><button class="btn btn--primary" type="button" data-modal-close>Fermer</button></div>
+</dialog>
+
+<dialog class="modal modal--wide account-modal" id="account-dialog" aria-labelledby="acc-title-catalog">
+  <%# Étape 1 : catalogue des comptes de la plateforme %>
+  <section class="acc-step" data-step="catalog" data-step-title="acc-title-catalog">
+    <div class="modal__header">
+      <span class="modal__icon"><%- icon('wallet', { size: 22 }) %></span>
+      <div class="acc-step__heading">
+        <h2 class="modal__title" id="acc-title-catalog">Ajouter un compte</h2>
+        <p class="text-muted text-sm">Choisissez le compte à ajouter, ou « Autre » s'il n'est pas dans la liste.</p>
+      </div>
+      <button class="btn btn--ghost btn--icon acc-step__close" type="button" data-modal-close aria-label="Fermer"><%- icon('x', { size: 20 }) %></button>
+    </div>
+    <div class="modal__body">
+      <div class="input-group acc-catalog__search">
+        <%- icon('search', { size: 17 }) %>
+        <label class="visually-hidden" for="acc-catalog-search">Rechercher un compte</label>
+        <input class="input" id="acc-catalog-search" type="search" placeholder="Rechercher un compte" autocomplete="off" data-catalog-search>
+      </div>
+      <ul class="acc-catalog" data-catalog>
+        <% accountTypes.forEach((t) => { %>
+          <li data-catalog-item data-name="<%= t.name.toLowerCase() %>">
+            <button class="acc-tile" type="button" data-catalog-type="<%= t.slug %>">
+              <span class="acc-tile__logo"><img src="<%= t.logo %>" alt="" width="34" height="34"></span>
+              <span class="acc-tile__name"><%= t.name %></span>
+            </button>
+          </li>
+        <% }) %>
+        <li class="acc-catalog__other">
+          <button class="acc-tile acc-tile--other" type="button" data-catalog-other>
+            <span class="acc-tile__logo"><%- icon('plus', { size: 22 }) %></span>
+            <span class="acc-tile__name">Autre</span>
+          </button>
+        </li>
+      </ul>
+      <p class="acc-catalog__empty" data-catalog-empty hidden>Aucun compte ne correspond. Choisissez « Autre » pour l'ajouter.</p>
+    </div>
+  </section>
+
+  <%# Étape 2 : compte absent de la plateforme (nom + logo), ajouté à la liste de la plateforme %>
+  <form class="acc-step" data-step="custom" data-step-title="acc-title-custom" data-custom-form hidden novalidate>
+    <div class="modal__header">
+      <span class="modal__icon"><%- icon('plus', { size: 22 }) %></span>
+      <div class="acc-step__heading">
+        <h2 class="modal__title" id="acc-title-custom">Ajouter un autre compte</h2>
+        <p class="text-muted text-sm">Il sera ajouté à la liste des comptes de la plateforme.</p>
+      </div>
+      <button class="btn btn--ghost btn--icon acc-step__close" type="button" data-modal-close aria-label="Fermer"><%- icon('x', { size: 20 }) %></button>
+    </div>
+    <div class="modal__body stack">
+      <div class="field">
+        <label class="field__label" for="acc-custom-name">Nom du compte</label>
+        <input class="input" id="acc-custom-name" name="name" required minlength="2" maxlength="40" autocomplete="off" placeholder="Ex. Orange Money">
+      </div>
+      <div class="field">
+        <span class="field__label" id="acc-custom-logo-label">Logo du compte</span>
+        <label class="acc-upload" for="acc-custom-logo">
+          <span class="acc-upload__preview" data-logo-preview><%- icon('image-plus', { size: 26 }) %></span>
+          <span class="acc-upload__text"><strong data-logo-name>Choisir une image</strong><small>PNG, JPG ou WebP · 1 Mo maximum</small></span>
+        </label>
+        <input class="acc-upload__input" id="acc-custom-logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" aria-labelledby="acc-custom-logo-label" required>
+      </div>
+      <p class="field__error" data-custom-error role="alert" hidden></p>
+    </div>
+    <div class="modal__footer">
+      <button class="btn" type="button" data-step-back>
+        <%- icon('arrow-left', { size: 16 }) %> Retour
+      </button>
+      <button class="btn btn--primary" type="submit"><%- icon('plus', { size: 16 }) %> Ajouter à la plateforme</button>
+    </div>
+  </form>
+
+  <%# Étape 3 : informations du compte %>
+  <form class="acc-step account-form" data-step="details" data-step-title="acc-title-details" data-account-form hidden novalidate>
+    <input type="hidden" name="id">
+    <div class="modal__header">
+      <span class="modal__icon acc-selected" data-selected-logo><%- icon('wallet', { size: 22 }) %></span>
+      <div class="acc-step__heading">
+        <h2 class="modal__title" id="acc-title-details" data-details-title>Ajouter un compte</h2>
+        <p class="text-muted text-sm">Le compte est publié sur votre profil dès son ajout.</p>
+      </div>
+      <button class="btn btn--ghost btn--icon acc-step__close" type="button" data-modal-close aria-label="Fermer"><%- icon('x', { size: 20 }) %></button>
+    </div>
+    <div class="modal__body">
+      <div class="form-grid">
+        <div class="field">
+          <label class="field__label" for="acc-type">Compte</label>
+          <div class="rfield">
+            <%- icon('wallet', { size: 18 }) %>
+            <select id="acc-type" name="type" required data-rich-select>
+              <option value="">Choisir un compte</option>
+              <% accountTypes.forEach((t) => { %><option value="<%= t.slug %>" data-icon="<%= t.logo %>"><%= t.name %></option><% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="acc-country">Pays du compte <span class="field__required" aria-hidden="true">*</span></label>
+          <div class="rfield">
+            <%- icon('globe', { size: 18 }) %>
+            <select id="acc-country" name="country" required aria-required="true" data-rich-select data-rich-select-flags data-rich-select-search="Rechercher un pays">
+              <option value="" selected>Choisissez le pays du compte</option>
+              <% countries.forEach((c) => { %><option value="<%= c.code %>" data-icon="/images/flags/<%= c.code.toLowerCase() %>.svg"><%= c.name %></option><% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="acc-currency">Devise</label>
+          <div class="rfield">
+            <%- icon('banknote', { size: 18 }) %>
+            <select id="acc-currency" name="currency" required data-rich-select data-rich-select-search="Rechercher une devise">
+              <%- currencyOptions %>
+            </select>
+          </div>
+        </div>
+        <div class="field" data-bank-field hidden>
+          <label class="field__label" for="acc-bank">Nom de la banque <span class="field__optional">(facultatif)</span></label>
+          <input class="input" id="acc-bank" name="bank" maxlength="60" autocomplete="off">
+        </div>
+        <%# Cases à cocher : où recevoir l'argent (E-mail et/ou RIB) et tarifs publics (prix sur 100, pourcentage) %>
+        <fieldset class="field form-grid__full acc-offer">
+          <legend class="field__label">À cocher</legend>
+          <div class="acc-checks">
+            <label class="acc-check"><input type="checkbox" name="withEmail" data-offer-toggle="email"><span><%- icon('mail', { size: 16 }) %> E-mail</span></label>
+            <label class="acc-check"><input type="checkbox" name="withPrice" data-offer-toggle="price"><span><%- icon('coins', { size: 16 }) %> Prix sur 100</span></label>
+            <label class="acc-check"><input type="checkbox" name="withRib" data-offer-toggle="rib"><span><%- icon('landmark', { size: 16 }) %> RIB</span></label>
+            <label class="acc-check"><input type="checkbox" name="withPercent" data-offer-toggle="percent"><span><%- icon('percent', { size: 16 }) %> Pourcentage</span></label>
+            <label class="acc-check"><input type="checkbox" name="withHolder" data-offer-toggle="holder"><span><%- icon('user-round', { size: 16 }) %> Nom et prénoms du titulaire</span></label>
+            <label class="acc-check"><input type="checkbox" name="withBic" data-offer-toggle="bic"><span><%- icon('building-2', { size: 16 }) %> BIC</span></label>
+            <label class="acc-check"><input type="checkbox" name="withAddress" data-offer-toggle="address"><span><%- icon('map-pin', { size: 16 }) %> Adresse</span></label>
+          </div>
+        </fieldset>
+
+        <div class="field form-grid__full" data-offer-field="email" hidden>
+          <label class="field__label" for="acc-email">E-mail</label>
+          <div class="input-group">
+            <%- icon('mail', { size: 17 }) %>
+            <input class="input" id="acc-email" name="email" type="email" maxlength="120" autocomplete="off" spellcheck="false" placeholder="vous@exemple.com" aria-describedby="acc-email-error">
+          </div>
+          <p class="field__error" id="acc-email-error" data-offer-error="email" role="alert" hidden></p>
+        </div>
+
+        <div class="field form-grid__full" data-offer-field="holder" hidden>
+          <label class="field__label" for="acc-holder">Nom et prénoms du titulaire</label>
+          <div class="input-group">
+            <%- icon('user-round', { size: 17 }) %>
+            <input class="input" id="acc-holder" name="holder" maxlength="100" autocomplete="off" placeholder="Ex. Afiavi Hounkpè" aria-describedby="acc-holder-error">
+          </div>
+          <p class="field__error" id="acc-holder-error" data-offer-error="holder" role="alert" hidden></p>
+        </div>
+
+        <div class="field form-grid__full" data-offer-field="rib" hidden>
+          <label class="field__label" for="acc-rib">RIB</label>
+          <div class="input-group">
+            <%- icon('landmark', { size: 17 }) %>
+            <input class="input acc-receive" id="acc-rib" name="rib" maxlength="60" autocomplete="off" spellcheck="false" placeholder="FR76 3000 6000 0112 3456 7890 189" aria-describedby="acc-rib-error">
+          </div>
+          <p class="field__error" id="acc-rib-error" data-offer-error="rib" role="alert" hidden></p>
+        </div>
+
+        <div class="field" data-offer-field="bic" hidden>
+          <label class="field__label" for="acc-bic">BIC</label>
+          <div class="input-group">
+            <%- icon('building-2', { size: 17 }) %>
+            <input class="input acc-receive" id="acc-bic" name="bic" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Ex. BNPAFRPP" aria-describedby="acc-bic-error">
+          </div>
+          <p class="field__error" id="acc-bic-error" data-offer-error="bic" role="alert" hidden></p>
+        </div>
+
+        <div class="field form-grid__full" data-offer-field="address" hidden>
+          <label class="field__label" for="acc-address">Adresse</label>
+          <div class="input-group">
+            <%- icon('map-pin', { size: 17 }) %>
+            <input class="input" id="acc-address" name="address" maxlength="160" autocomplete="off" placeholder="Ex. 12 rue de la Paix, 75002 Paris" aria-describedby="acc-address-error">
+          </div>
+          <p class="field__error" id="acc-address-error" data-offer-error="address" role="alert" hidden></p>
+        </div>
+
+        <div class="field form-grid__full" data-offer-field="price" hidden>
+          <span class="field__label" id="acc-price-label">Prix sur 100</span>
+          <%# « 100 [devise] = [montant] [devise] » : deux listes de toutes les devises, avec recherche %>
+          <div class="acc-price" role="group" aria-labelledby="acc-price-label" aria-describedby="acc-price-error">
+            <span class="acc-price__base" aria-hidden="true">100</span>
+            <div class="rfield acc-price__from">
+              <%- icon('coins', { size: 18 }) %>
+              <label class="visually-hidden" for="acc-price-symbol">Devise des 100</label>
+              <select id="acc-price-symbol" name="priceSymbol" data-rich-select data-rich-select-search="Rechercher une devise">
+                <option value="">Choisir la devise</option>
+                <%- currencyOptions %>
+              </select>
+            </div>
+            <span class="acc-price__eq" aria-hidden="true">=</span>
+            <input class="input acc-price__amount" name="priceAmount" inputmode="decimal" maxlength="18" autocomplete="off" placeholder="Montant (ex. 65 000)" aria-label="Montant">
+            <div class="rfield acc-price__to">
+              <%- icon('banknote', { size: 18 }) %>
+              <label class="visually-hidden" for="acc-price-unit">Devise du montant</label>
+              <select id="acc-price-unit" name="priceUnit" data-rich-select data-rich-select-search="Rechercher une devise">
+                <option value="">Choisir la devise</option>
+                <%- currencyOptions %>
+              </select>
+            </div>
+          </div>
+          <p class="field__error" id="acc-price-error" data-offer-error="price" role="alert" hidden></p>
+        </div>
+
+        <div class="field" data-offer-field="percent" hidden>
+          <label class="field__label" for="acc-percent">Pourcentage sur la transaction</label>
+          <div class="acc-percent">
+            <input class="input" id="acc-percent" name="percent" inputmode="decimal" maxlength="6" autocomplete="off" placeholder="25" aria-describedby="acc-percent-error">
+            <span class="acc-percent__sign" aria-hidden="true">%</span>
+          </div>
+          <p class="field__error" id="acc-percent-error" data-offer-error="percent" role="alert" hidden></p>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn acc-back" type="button" data-step-back><%- icon('arrow-left', { size: 16 }) %> Retour</button>
+      <button class="btn" type="button" data-modal-close>Annuler</button>
+      <button class="btn btn--primary" type="submit" data-account-submit>Ajouter le compte</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="application/json" id="accounts-labels"><%- JSON.stringify({
+  types: Object.fromEntries(accountTypes.map((t) => [t.slug, { name: t.name, logo: t.logo, receiveLabel: t.receiveLabel, receivePlaceholder: t.receivePlaceholder }])),
+  defaultReceive,
+  countries: Object.fromEntries(countries.map((c) => [c.code, { name: c.name, currency: c.currency }])),
+}).replace(/</g, '\\u003c') %></script>
+<script src="<%= asset('js/rich-select.js') %>" defer></script>
+<script src="<%= asset('js/accounts.js') %>" defer></script>

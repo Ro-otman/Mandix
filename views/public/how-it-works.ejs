@@ -1,0 +1,65 @@
+<section class="page-hero page-hero--split">
+  <div class="container about-hero__grid">
+    <div>
+      <nav aria-label="Fil d'Ariane"><ol class="breadcrumb"><li><a href="/">Accueil</a></li><li aria-hidden="true">/</li><li aria-current="page">Comment ça marche</li></ol></nav>
+      <h1 data-hero-item>Simple pour les clients comme pour les mandataires</h1>
+      <p data-hero-item>De la recherche au premier message, chaque étape est pensée pour que vous sachiez à qui vous confiez l'ouverture de votre compte.</p>
+      <div class="cluster" data-hero-item><a class="btn btn--primary btn--lg" href="/mandataires"><%- icon('search', { size: 18 }) %> Trouver un mandataire</a><a class="btn btn--ghost-border btn--lg" href="/devenir-mandataire">Je suis mandataire</a></div>
+    </div>
+    <div class="about-hero__photo" data-hero-item><%- include('../partials/photo', { slot: 'accueil-rencontre', eager: true }) %></div>
+  </div>
+</section>
+
+<section class="band band--white" aria-labelledby="client-path">
+  <div class="container">
+    <div class="band-head"><div class="band-head__text"><p class="kicker">Pour les clients</p><h2 id="client-path">Quatre étapes pour ouvrir votre compte</h2></div></div>
+    <ol class="path" data-reveal data-reveal-stagger>
+      <% [['search', 'Recherchez', 'Choisissez le pays de la banque et le type de compte que vous souhaitez ouvrir.'],
+          ['user-check', 'Comparez', 'Banques représentées, comptes proposés, documents demandés, langues et avis.'],
+          ['message-circle', 'Écrivez au mandataire', 'Posez vos questions dans la messagerie, sans jamais communiquer de code bancaire.'],
+          ['star', 'Ouvrez votre compte', 'Le mandataire vous guide jusqu\'à l\'ouverture, puis vous pouvez laisser un avis.']].forEach(([ic, t, d], i) => { %>
+        <li class="path__step"><span class="path__num"><%= i + 1 %></span><span class="path__icon"><%- icon(ic, { size: 24, strokeWidth: 1.75 }) %></span><h3><%= t %></h3><p><%= d %></p></li>
+      <% }) %>
+    </ol>
+  </div>
+</section>
+
+<section class="band band--navy" aria-labelledby="pro-path">
+  <div class="container">
+    <div class="band-head"><div class="band-head__text"><p class="kicker">Pour les mandataires</p><h2 id="pro-path">Quatre étapes pour recevoir vos premières demandes</h2></div></div>
+    <ol class="path path--dark" data-reveal data-reveal-stagger>
+      <% [['user-plus', 'Inscription', 'Pseudo, e-mail et mot de passe, sans pièce justificative.'],
+          ['mail-check', 'Confirmation', 'Un lien de confirmation est envoyé par e-mail.'],
+          ['wallet', 'Vos comptes', 'PayPal, Wise, virement, crypto… publiés dès leur ajout.'],
+          ['message-circle', 'Demandes', 'Les clients vous contactent, la transaction se déroule pas à pas.']].forEach(([ic, t, d], i) => { %>
+        <li class="path__step"><span class="path__num"><%= i + 1 %></span><span class="path__icon"><%- icon(ic, { size: 24, strokeWidth: 1.75 }) %></span><h3><%= t %></h3><p><%= d %></p></li>
+      <% }) %>
+    </ol>
+  </div>
+</section>
+
+<section class="band band--white" aria-labelledby="engage">
+  <div class="container split">
+    <div class="split__media" data-reveal><%- include('../partials/photo', { slot: 'accueil-verification' }) %></div>
+    <div class="split__text" data-reveal>
+      <p class="kicker">Nos engagements</p>
+      <h2 id="engage">Ce que Mandix garantit, et ce qu'il ne fait pas</h2>
+      <ul class="check-list check-list--spaced">
+        <li><%- icon('circle-check', { size: 20 }) %><span>Une messagerie guidée, étape par étape, preuves de paiement à l'appui.</span></li>
+        <li><%- icon('circle-check', { size: 20 }) %><span>Des avis réservés aux clients réellement accompagnés.</span></li>
+        <li><%- icon('circle-check', { size: 20 }) %><span>Une messagerie surveillée : les numéros de carte et IBAN y sont bloqués.</span></li>
+      </ul>
+      <ul class="check-list check-list--negative check-list--spaced">
+        <li><%- icon('ban', { size: 20 }) %><span>Aucun paiement, dépôt, retrait ou virement sur la plateforme.</span></li>
+        <li><%- icon('ban', { size: 20 }) %><span>Aucun code, mot de passe ou identifiant bancaire demandé.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="band band--brume">
+  <div class="container cta-simple">
+    <h2>Prêt à trouver votre mandataire bancaire ?</h2>
+    <div class="cluster"><a class="btn btn--primary btn--lg" href="/mandataires">Trouver un mandataire</a><a class="btn btn--ghost-border btn--lg" href="/aide">Une question ?</a></div>
+  </div>
+</section>

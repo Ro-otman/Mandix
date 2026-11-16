@@ -1,0 +1,62 @@
+<%#
+  Carte compacte d'un mandataire. Locaux : pro (services/marketplaceService.js → toCard),
+  profileHref (facultatif, défaut : profil public), profileInPanel (facultatif : fiche ouverte dans le panneau latéral).
+  - Badge « vérifié » seulement si pro.verified (vérification réellement effectuée).
+  - Disponibilité en direct : « En ligne » vient du serveur ; pour un mandataire absent, « il y a X min »
+    est recalculé toutes les 30 s par public/js/app.js ([data-presence][data-last-seen]).
+  - Pied de carte : « Transaction sécurisée » (demande du client, 2026-11-10). La certification
+    (1 000 transactions, utils/badges.js) est affichée sur la page profil.
+%>
+<% const href = typeof profileHref !== 'undefined' && profileHref ? profileHref : `/mandataires/${pro.slug}`; %>
+<% const inPanel = typeof profileInPanel !== 'undefined' && profileInPanel; /* carte non cliquable, seul « Voir le profil » ouvre la fiche dans le panneau latéral */ %>
+<% const visitor = typeof publicMode !== 'undefined' && publicMode; /* pages publiques : « Message » passe par la connexion */ %>
+<% const messageHref = visitor ? `/connexion?suite=${encodeURIComponent(`/client/messages/${pro.slug}`)}` : `/client/messages/${pro.slug}`; %>
+<article class="pro <%= inPanel ? 'pro--static' : '' %>">
+  <% if (!inPanel) { %><a class="pro__link" href="<%= href %>" aria-label="Voir le profil de <%= pro.fullName %>"></a><% } %>
+
+  <header class="pro__head">
+    <div class="pro__avatar">
+      <%- pro.avatar %>
+      <span class="pro__dot <%= pro.presence.online ? 'is-online' : '' %>" data-presence-dot aria-hidden="true"></span>
+    </div>
+    <div class="pro__identity">
+      <h3 class="pro__name">
+        <span><%= pro.fullName %></span>
+        <% if (pro.verified) { %><%- verifiedBadge({ size: 18 }) %><% } %>
+      </h3>
+      <%- include('presence', { status: pro.presence }) %>
+    </div>
+  </header>
+
+  <dl class="pro__rows">
+    <% if (pro.accountTypes.length) { %>
+      <div>
+        <dt>Compte</dt>
+        <dd title="<%= pro.accountTypes.join(', ') %>"><span class="pro__bank"><%= pro.accountTypes[0] %></span><% if (pro.accountTypes.length > 1) { %><span class="pro__more">+<%= pro.accountTypes.length - 1 %></span><% } %></dd>
+      </div>
+    <% } %>
+    <% if (pro.accountCountries.length) { const c0 = pro.accountCountries[0]; %>
+      <div><dt>Pays</dt><dd title="Pays des comptes : <%= pro.accountCountries.map((c) => c.name).join(', ') %>"><%- flag(c0.code, { size: 20 }) %><%= c0.name %><% if (pro.accountCountries.length > 1) { %><span class="pro__more">+<%= pro.accountCountries.length - 1 %></span><% } %></dd></div>
+    <% } %>
+    <div><dt>Plafond</dt><dd><strong><%= pro.limitLabel %></strong></dd></div>
+    <%# Tarifs du compte phare (ligne « Compte ») seulement : chacun affiché s'il existe, rien sinon %>
+    <% if (pro.leadFee) { %><div><dt>Pourcentage</dt><dd><strong><%= pro.leadFee %></strong></dd></div><% } %>
+    <% if (pro.leadRate) { %><div><dt>Prix sur 100</dt><dd class="pro__rate"><strong><%= pro.leadRate %></strong></dd></div><% } %>
+    <div>
+      <dt>Avis</dt>
+      <dd>
+        <% if (pro.rating) { %>
+          <span class="pro__star"><%- icon('star', { size: 15 }) %></span><strong><%= pro.rating.toFixed(1).replace('.', ',') %></strong>
+          <span class="pro__muted">(<%= pro.reviewsCount %> avis)</span>
+        <% } else { %><span class="pro__muted">Pas encore d'avis</span><% } %>
+      </dd>
+    </div>
+  </dl>
+
+  <footer class="pro__actions">
+    <a class="btn btn--ghost-border" href="<%= href %>" <% if (inPanel) { %>data-open-profile="<%= pro.slug %>"<% } %>><%- icon('user', { size: 16 }) %> Voir le profil</a>
+    <a class="btn btn--primary" href="<%= messageHref %>" <%- visitor ? '' : `data-open-chat="${pro.slug}"` %>><%- icon('message-circle', { size: 16 }) %> Message</a>
+  </footer>
+
+  <p class="pro__foot"><%- icon('lock', { size: 14, strokeWidth: 2.25 }) %> Transaction sécurisée</p>
+</article>

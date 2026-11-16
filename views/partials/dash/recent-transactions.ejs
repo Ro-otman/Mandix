@@ -1,0 +1,33 @@
+<%#
+  Dernières transactions menées dans les conversations guidées (statut avec icône et libellé).
+  Locaux : rows ([{ at, client, type, account, amount, status, pro?, slug? }]), showPro (colonne Mandataire, espace admin).
+%>
+<%
+  const withPro = typeof showPro !== 'undefined' && showPro;
+  const TX_STATUS = {
+    // Trois statuts seulement : Validé, En attente, Rejeté.
+    completed: { label: 'Validé', tone: 'success', icon: 'circle-check' },
+    pending: { label: 'En attente', tone: 'warning', icon: 'clock' },
+    rejected: { label: 'Rejeté', tone: 'danger', icon: 'circle-x' },
+  };
+%>
+<section class="panel panel--flush stats-recent" aria-labelledby="recent-title">
+  <header class="panel__head panel__head--pad"><h2 class="stats-card__title" id="recent-title">Dernières transactions</h2></header>
+  <div class="table-wrap">
+    <table class="table table--responsive">
+      <thead><tr><th scope="col">Date</th><th scope="col">Client</th><% if (withPro) { %><th scope="col">Mandataire</th><% } %><th scope="col">Compte</th><th scope="col" class="num">Montant</th><th scope="col">Statut</th></tr></thead>
+      <tbody>
+        <% rows.forEach((r) => { const s = TX_STATUS[r.status]; %>
+          <tr>
+            <td data-label="Date"><%= fmt.formatDateTime(r.at) %></td>
+            <td data-label="Client"><strong><%= r.client %></strong></td>
+            <% if (withPro) { %><td data-label="Mandataire"><a href="/admin/mandataires/<%= r.slug %>"><%= r.pro %></a></td><% } %>
+            <td data-label="Compte"><span class="stats-account"><%- serviceLogo(r.type, { size: 18 }) %> <%= r.account %></span></td>
+            <td data-label="Montant" class="num"><%= r.amount %></td>
+            <td data-label="Statut"><span class="badge badge--<%= s.tone %>"><%- icon(s.icon, { size: 13 }) %> <%= s.label %></span></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>

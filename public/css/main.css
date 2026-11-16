@@ -1,0 +1,447 @@
+/* =============================================================================
+   Mandix — Fondations : jetons de design, base, typographie, utilitaires.
+   Palette validée « Atlantique + Lagune » : aplats uniquement, AUCUN dégradé.
+   Proportions : ~60 % neutres, ~30 % bleus (royal + nuit), ~10 % émeraude et or.
+   L'émeraude est réservée à ce qui est vérifié ou validé ; l'or reste rare.
+   ============================================================================= */
+
+:root {
+  /* Bleus (confiance, actions) */
+  --navy: #0b1b3a; /* bleu nuit : texte, bandeau sombre, pied de page */
+  --blue-900: #0b1b3a;
+  --blue-800: #123a94; /* survol */
+  --blue-700: #1747b5; /* bleu royal : principal */
+  --blue-600: #1747b5;
+  --blue-100: #d6e3ff;
+  --blue-50: #eaf1ff; /* bleu brume */
+
+  /* Émeraude (vérifié, validé, succès) */
+  --green-700: #095646;
+  --green-600: #0c6b58;
+  --green-50: #e3f2ec; /* menthe */
+
+  /* Or (mise en valeur ponctuelle — jamais pour du texte sur fond clair) */
+  --gold-500: #e9b23f;
+  --gold-50: #fbf1d9;
+
+  /* Terre cuite (erreurs) et ambre (en attente) */
+  --red-700: #a33522;
+  --red-600: #c2412d;
+  --red-50: #fbe9e5;
+  --amber-700: #8a5a00;
+  --amber-50: #fdf3dc;
+
+  /* Neutres, légèrement bleutés */
+  --white: #ffffff;
+  --gray-25: #fafbfd;
+  --gray-50: #f5f7fa; /* fond général */
+  --gray-100: #eef2f7;
+  --gray-200: #e3e8f0; /* bordures */
+  --gray-300: #cbd3e1;
+  --gray-500: #5b6b86; /* texte secondaire */
+  --gray-700: #33415c;
+  --gray-900: #0b1b3a; /* texte principal = bleu nuit */
+
+  /* Couleurs fixes (identiques en mode jour et en mode nuit) */
+  --on-color: #ffffff;      /* texte et icônes posés sur une couleur (boutons, pastilles) */
+  --brand-navy: #0b1b3a;    /* fonds bleu nuit : bannière, bandeaux sombres, pied de page */
+  --logo-bg: #ffffff;       /* derrière les logos des comptes (PayPal, Wise…) */
+
+  /* Rôles sémantiques */
+  --color-primary: var(--blue-700);
+  --color-primary-hover: var(--blue-800);
+  --color-accent: var(--blue-700);
+  --color-primary-soft: var(--blue-50);
+  --color-success: var(--green-600);
+  --color-danger: var(--red-600);
+  --color-warning: var(--amber-700);
+  --color-bg: var(--gray-50);
+  --color-surface: var(--white);
+  --color-surface-muted: var(--gray-100);
+  --color-text: var(--gray-900);
+  --color-text-muted: var(--gray-500);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-focus: rgba(23, 71, 181, 0.32);
+
+  /* Typographie : Manrope (titres, chiffres) + Inter (texte) */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Grands titres (h1, h2) : professionnelle avec une touche ludique */
+  --font-headline: "Bricolage Grotesque", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem);
+  --text-3xl: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
+  --text-4xl: clamp(2.25rem, 1.4rem + 3.4vw, 3.75rem);
+  --leading-tight: 1.1;
+  --leading-normal: 1.6;
+
+  /* Espacements (base 4 px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* Formes */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Ombres légères, teintées du texte principal */
+  --shadow-xs: 0 1px 2px rgba(11, 27, 58, 0.05);
+  --shadow-sm: 0 1px 3px rgba(11, 27, 58, 0.06), 0 1px 2px rgba(11, 27, 58, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(11, 27, 58, 0.08), 0 2px 4px rgba(11, 27, 58, 0.04);
+  --shadow-lg: 0 18px 40px -12px rgba(11, 27, 58, 0.16);
+
+  /* Mouvement */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+
+  /* Mise en page */
+  --container-max: 1180px;
+  --container-gutter: clamp(1rem, 4vw, 2rem);
+  --header-height: 84px;
+  --sidebar-width: 264px;
+}
+
+/* -----------------------------------------------------------------------------
+   Mode nuit : mêmes rôles, couleurs sombres. Choisi par l'utilisateur (bouton jour / nuit, mémorisé sur
+   l'appareil) ou, à défaut, selon la préférence du système (public/js/boot.js pose data-theme sur <html>).
+   Le blanc devient la surface sombre et le bleu nuit la couleur du texte ; les couleurs fixes ci-dessus
+   gardent le texte blanc sur les boutons et les fonds bleu nuit.
+   ----------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --navy: #e8edf7;
+  --blue-900: #e8edf7;
+  --blue-800: #5a86f7;
+  --blue-700: #3d6cf0;
+  --blue-600: #3d6cf0;
+  --blue-100: rgba(77, 124, 245, 0.34);
+  --blue-50: rgba(77, 124, 245, 0.15);
+  --green-700: #5fd3b0;
+  --green-600: #1c9a7d;
+  --green-50: rgba(31, 156, 127, 0.17);
+  --gold-50: rgba(233, 178, 63, 0.15);
+  --red-700: #f39a87;
+  --red-600: #e0573f;
+  --red-50: rgba(224, 87, 63, 0.17);
+  --amber-700: #f2c35c;
+  --amber-50: rgba(233, 178, 63, 0.15);
+  --white: #121d33;
+  --gray-25: #0e182b;
+  --gray-50: #0a1322;
+  --gray-100: #18253e;
+  --gray-200: #243453;
+  --gray-300: #34476c;
+  --gray-500: #98a6c2;
+  --gray-700: #c4cee0;
+  --gray-900: #e8edf7;
+  --brand-navy: #0f2147;
+  --color-focus: rgba(93, 140, 255, 0.5);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ----------------------------------------------------------------------------- Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + var(--space-4));
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  text-wrap: balance;
+  color: var(--color-text);
+}
+
+h1 { font-family: var(--font-headline); font-size: var(--text-4xl); font-weight: 800; letter-spacing: -0.035em; }
+h2 { font-family: var(--font-headline); font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.03em; }
+h3 { font-size: var(--text-xl); letter-spacing: -0.01em; }
+h4 { font-size: var(--text-lg); letter-spacing: -0.01em; }
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--blue-100);
+}
+
+/* Lien d'évitement pour la navigation clavier */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: 1000;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--on-color);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+  color: var(--on-color);
+}
+
+/* ----------------------------------------------------------------------------- Utilitaires */
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-gutter);
+}
+
+.section {
+  padding-block: clamp(3.5rem, 6vw, 6rem);
+}
+
+.section--surface {
+  background: var(--color-surface);
+  border-block: 1px solid var(--color-border);
+}
+
+.section-header {
+  max-width: 680px;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.section-header--center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.section-header p {
+  margin-top: var(--space-4);
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.01em;
+}
+
+.text-muted { color: var(--color-text-muted); }
+.text-success { color: var(--color-success); }
+.text-danger { color: var(--color-danger); }
+.text-primary { color: var(--color-primary); }
+.text-sm { font-size: var(--text-sm); }
+.text-center { text-align: center; }
+
+.stack > * + * { margin-top: var(--space-4); }
+.stack-sm > * + * { margin-top: var(--space-2); }
+.stack-lg > * + * { margin-top: var(--space-8); }
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.grid--2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.grid--3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.grid--4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Éléments animés par GSAP : masqués seulement si JS est actif (classe posée par boot.js). */
+.js [data-hero-item] {
+  opacity: 0;
+}
+
+.js.reveal-fallback [data-hero-item] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js [data-hero-item] { opacity: 1; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* L'attribut hidden l'emporte toujours sur les display des composants. */
+[hidden] {
+  display: none !important;
+}
+
+
+/* -----------------------------------------------------------------------------
+   Mode nuit : ajustements ciblés
+   ----------------------------------------------------------------------------- */
+/* Logos des comptes : toujours sur fond blanc, sinon PayPal, Wise… disparaissent sur fond sombre */
+:root[data-theme="dark"] .service-logo,
+:root[data-theme="dark"] .flow-chip__logo,
+:root[data-theme="dark"] .acc-selected--logo img,
+:root[data-theme="dark"] .rselect__icon:not(.rselect__icon--flag) img { background: var(--logo-bg); border-radius: 6px; padding: 2px; }
+:root[data-theme="dark"] .logo-stack .service-logo,
+:root[data-theme="dark"] .hx-logos .service-logo { background: var(--logo-bg); border-radius: 50%; }
+/* Bandeaux bleu nuit : un liseré les détache du fond sombre de la page */
+:root[data-theme="dark"] .hx__panel,
+:root[data-theme="dark"] .band--navy,
+:root[data-theme="dark"] .site-footer { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+/* Couleurs claires écrites en dur dans les feuilles de style */
+:root[data-theme="dark"] .topbar { background: rgba(18, 29, 51, 0.92); }
+:root[data-theme="dark"] .page-loader { background: rgba(10, 19, 34, 0.6); }
+:root[data-theme="dark"] .form-actions--sticky { background: rgba(18, 29, 51, 0.95); }
+:root[data-theme="dark"] .nitem.is-unread { background: var(--blue-50); }
+:root[data-theme="dark"] .nitem.is-unread .nitem__badge { border-color: var(--white); }
+:root[data-theme="dark"] .panel--gold,
+:root[data-theme="dark"] .auth-alt__item--pro:hover { border-color: rgba(233, 178, 63, 0.35); }
+:root[data-theme="dark"] .panel--danger { border-color: rgba(224, 87, 63, 0.4); }
+/* Badge doré sur la barre or des niveaux : rosette foncée, étoile blanche */
+:root[data-theme="dark"] .lvl--7 .lvl__bar .certified-badge { color: var(--brand-navy); }
+/* Images d'illustration (états vides) : légèrement adoucies */
+:root[data-theme="dark"] img[src$="empty-search.svg"],
+:root[data-theme="dark"] img[src$="empty-reviews.svg"] { opacity: 0.85; }
+
+/* Passage d'un mode à l'autre : fondu bref des couleurs (désactivé si l'utilisateur réduit les animations) */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after { transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, fill 0.25s ease !important; }
+@media (prefers-reduced-motion: reduce) {
+  html.theme-switching, html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: none !important; }
+}
+
+/* -----------------------------------------------------------------------------
+   Bouton mode jour / mode nuit (partials/theme-toggle.ejs)
+   ----------------------------------------------------------------------------- */
+.theme-toggle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--white);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 0.15s), border-color var(--duration-fast, 0.15s), color var(--duration-fast, 0.15s);
+}
+.theme-toggle:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.theme-toggle:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.theme-toggle__icon { grid-area: 1 / 1; display: grid; place-items: center; transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease; }
+.theme-toggle__icon--sun { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+:root[data-theme="dark"] .theme-toggle__icon--moon { opacity: 0; transform: rotate(90deg) scale(0.6); }
+:root[data-theme="dark"] .theme-toggle__icon--sun { opacity: 1; transform: none; color: var(--gold-500); }
+@media (prefers-reduced-motion: reduce) { .theme-toggle__icon { transition: none; } }

@@ -1,0 +1,71 @@
+<%#
+  Layout des pages d'authentification : formulaire à gauche, panneau visuel à droite.
+  Locaux : title, aside (voir controllers/authPagesController.js), topLink { text, label, href }.
+%>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <%- include('../partials/document-head', { styles: ['auth'] }) %>
+</head>
+<body class="auth-body">
+  <%- include('../partials/loader') %>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <div class="auth">
+    <div class="auth__main">
+      <header class="auth__top">
+        <%- include('../partials/logo') %>
+        <div class="auth__top-actions">
+          <%- include('../partials/theme-toggle') %>
+          <a class="auth__back" href="/"><%- icon('arrow-left', { size: 16 }) %> Retour au site</a>
+          <% if (typeof topLink !== 'undefined' && topLink) { %>
+            <span class="auth__top-sep" aria-hidden="true"></span>
+            <span class="auth__top-text"><%= topLink.text %></span>
+            <a class="btn btn--ghost-border btn--sm auth__top-btn" href="<%= topLink.href %>"><%= topLink.label %></a>
+          <% } %>
+        </div>
+      </header>
+
+      <main class="auth__content" id="contenu" tabindex="-1">
+        <%- body %>
+      </main>
+
+      <%# Pages d'authentification épurées : pas de pied de page (demande du client). %>
+    </div>
+
+    <aside class="auth__aside" aria-label="Présentation de <%= appName %>">
+      <div class="auth__visual <%= aside.illustration ? 'auth__visual--art' : '' %>">
+        <% if (aside.photo) { %>
+          <%- include('../partials/photo', { slot: aside.photo, eager: true }) %>
+        <% } else { %>
+          <div class="auth__art"><img src="/images/illustrations/<%= aside.illustration %>.svg" alt="" width="440" height="330"></div>
+        <% } %>
+
+        <span class="auth__pill"><%- icon('shield-check', { size: 16 }) %> <%= aside.pill %></span>
+
+        <div class="auth__overlay">
+          <% if (aside.chip) { %>
+            <div class="auth__chip">
+              <span class="auth__chip-icon"><%- icon(aside.chip.icon, { size: 20 }) %></span>
+              <div><strong><%= aside.chip.title %></strong><span><%= aside.chip.text %></span></div>
+            </div>
+          <% } %>
+          <div class="auth__card">
+            <p class="auth__card-kicker"><%= aside.kicker %></p>
+            <p class="auth__card-title"><%= aside.title %></p>
+            <ul class="auth__perks">
+              <% aside.perks.forEach(([ic, label]) => { %>
+                <li><span class="auth__perk-icon"><%- icon(ic, { size: 15 }) %></span><%= label %></li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <%- include('../partials/toasts') %>
+  <%- include('../partials/confirm-dialog') %>
+  <%- include('../partials/scripts') %>
+  <script src="<%= asset('js/stepper.js') %>" defer></script>
+  <script src="<%= asset('js/auth.js') %>" defer></script>
+</body>
+</html>

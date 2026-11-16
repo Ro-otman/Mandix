@@ -1,0 +1,19 @@
+<%#
+  Volume des 30 derniers jours par compte : barres classées d'une seule teinte, valeur au bout.
+  Locaux : rows ([{ type, name, transactions, volumeEur }]), headingId.
+%>
+<%
+  const maxVolume = Math.max(...rows.map((a) => a.volumeEur));
+  const total = rows.reduce((sum, a) => sum + a.volumeEur, 0);
+%>
+<h2 class="stats-card__title" id="<%= headingId %>">Volume par compte</h2>
+<p class="stats-card__sub">30 derniers jours · <%= fmt.formatEur(total) %> au total</p>
+<ul class="rank-list">
+  <% rows.forEach((a) => { %>
+    <li class="rank" title="<%= a.name %> : <%= fmt.formatEur(a.volumeEur) %>, <%= fmt.formatNumber(a.transactions) %> transactions">
+      <span class="rank__name"><%- serviceLogo(a.type, { size: 20 }) %> <%= a.name %></span>
+      <span class="rank__bar" aria-hidden="true"><span data-progress="<%= Math.round((a.volumeEur / maxVolume) * 100) %>"></span></span>
+      <span class="rank__value"><strong><%= fmt.formatEur(a.volumeEur) %></strong> <small><%= fmt.formatNumber(a.transactions) %> trans.</small></span>
+    </li>
+  <% }) %>
+</ul>

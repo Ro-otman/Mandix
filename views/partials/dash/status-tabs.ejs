@@ -1,0 +1,8 @@
+<%# Onglets de filtre par statut. Locaux : basePath, all (liste complète), statut (actif), tabGroup ('request'), tabKey (champ de statut, défaut 'status'), allLabel (défaut « Toutes »). %>
+<% const key = typeof tabKey !== 'undefined' ? tabKey : 'status'; const values = [...new Set(all.map((x) => x[key]))]; %>
+<nav class="seg" aria-label="Filtrer par statut">
+  <a class="seg__item <%= !statut ? 'is-active' : '' %>" href="<%= basePath %>"><%= typeof allLabel !== 'undefined' ? allLabel : 'Toutes' %> <span><%= all.length %></span></a>
+  <% Object.keys(labels.STATUS[tabGroup]).filter((v) => values.includes(v)).forEach((v) => { %>
+    <a class="seg__item <%= statut === v ? 'is-active' : '' %>" href="<%= basePath %>?statut=<%= v %>"><%= labels.status(tabGroup, v).label %> <span><%= all.filter((x) => x[key] === v).length %></span></a>
+  <% }) %>
+</nav>

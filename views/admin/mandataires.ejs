@@ -1,0 +1,46 @@
+<%# Liste des mandataires. Locaux : all, mandataires (filtrés), statut, limitFor, certificationThreshold. %>
+<%- include('../partials/dash/page-head', { heading: 'Mandataires', sub: 'Profils, comptes publiés et activité. Suspendez un profil qui ne respecte pas les règles.' }) %>
+
+<div class="toolbar">
+  <%- include('../partials/dash/status-tabs', { basePath: '/admin/mandataires', all, statut, tabGroup: 'account', tabKey: 'status', allLabel: 'Tous' }) %>
+  <form class="toolbar__search" role="search" method="get" action="/admin/mandataires">
+    <% if (statut) { %><input type="hidden" name="statut" value="<%= statut %>"><% } %>
+    <div class="input-group"><%- icon('search', { size: 17 }) %><label class="visually-hidden" for="q">Rechercher</label><input class="input" id="q" name="q" type="search" value="<%= typeof q !== 'undefined' ? q : '' %>" placeholder="Pseudo, e-mail, code pays…"></div>
+  </form>
+</div>
+
+<section class="panel panel--flush">
+  <div class="table-wrap">
+    <table class="table table--responsive">
+      <thead><tr><th scope="col">Mandataire</th><th scope="col">Pays</th><th scope="col">Comptes</th><th scope="col" class="num">Transactions</th><th scope="col" class="num">Plafond</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+      <tbody>
+        <% mandataires.forEach((m) => { const certified = m.transactions >= certificationThreshold; %>
+          <tr>
+            <td data-label="Mandataire">
+              <div class="cell-person">
+                <span class="mini-avatar"><%- avatarSvg(m.avatar, { size: 36 }) %></span>
+                <div>
+                  <strong class="cell-name"><%= m.firstName %> <%= m.lastName %><% if (certified) { %><%- certifiedBadge({ size: 16 }) %><% } %></strong>
+                  <span class="text-muted text-sm">Inscrit le <%= fmt.formatDate(m.joined) %></span>
+                </div>
+              </div>
+            </td>
+            <td data-label="Pays"><span class="cell-country"><%- flag(m.country, { size: 18 }) %> <%= m.countryName %></span></td>
+            <td data-label="Comptes">
+              <span class="logo-stack" title="<%= m.accountTypes.map(typeName).join(', ') %>">
+                <% m.accountTypes.slice(0, 4).forEach((t) => { %><%- serviceLogo(t, { size: 22 }) %><% }) %>
+                <% if (m.accountTypes.length > 4) { %><span class="logo-stack__more">+<%= m.accountTypes.length - 4 %></span><% } %>
+              </span>
+            </td>
+            <td data-label="Transactions" class="num">
+              <%= fmt.formatNumber(m.transactions) %>
+            </td>
+            <td data-label="Plafond" class="num"><%= limitFor(m.transactions) %> <span class="text-muted text-sm">· niv. <%= levelFor(m.transactions) %></span></td>
+            <td data-label="Statut"><%- include('../partials/status-badge', { group: 'account', value: m.status }) %></td>
+            <td data-label=""><a class="btn btn--ghost-border btn--sm" href="/admin/mandataires/<%= m.slug %>">Ouvrir</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>

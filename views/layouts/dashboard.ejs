@@ -1,0 +1,96 @@
+<% const hasDrawer = dashboardRole === 'client' || dashboardRole === 'mandataire'; -%>
+<%#
+  Layout des espaces connectés. Locaux requis : dashboardRole ('client' | 'mandataire' | 'admin'), title.
+  Le menu provient de config/navigation.js (dashboardMenus).
+%>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <%- include('../partials/document-head', { styles: ['dashboard', ...(typeof extraStyles !== 'undefined' ? extraStyles : [])] }) %>
+  <%# Espace de la page : les appels JavaScript et la connexion temps réel utilisent la session de cet espace. %>
+  <meta name="mandix-space" content="<%= dashboardRole %>">
+</head>
+<body>
+  <%- include('../partials/loader') %>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <div class="dashboard dashboard--<%= dashboardRole %>">
+    <aside class="sidebar" id="sidebar" aria-label="Menu de l'espace">
+      <div class="sidebar__brand"><%- include('../partials/logo') %></div>
+      <span class="sidebar__space"><%= roleLabels[dashboardRole] %></span>
+      <nav class="sidebar__nav">
+        <ul class="sidebar__list">
+          <% const badges = typeof menuBadges !== 'undefined' ? menuBadges : {}; %>
+          <% dashboardMenus[dashboardRole].forEach((item) => { const count = item.badgeKey ? badges[item.badgeKey] : 0; %>
+            <li>
+              <a class="sidebar__link" href="<%= item.href %>" <%- isActive(item.href) ? 'aria-current="page"' : '' %> <%- item.drawer ? 'data-open-' + item.drawer : '' %>>
+                <%- icon(item.icon, { size: 19 }) %> <%= item.label %>
+                <% if (item.badgeKey) { const unit = item.badgeKey === 'verifications' ? ' à traiter' : ` non lu${count > 1 ? 's' : ''}`; %><span class="sidebar__badge" data-live-badge="<%= item.badgeKey %>" aria-label="<%= count %><%= unit %>" <%= count ? '' : 'hidden' %>><%= count %></span><% } %>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </nav>
+      <% if (currentUser) { %>
+        <div class="sidebar__footer">
+          <form method="post" action="/deconnexion" data-confirm="Voulez-vous vraiment vous déconnecter ?" data-confirm-label="Se déconnecter">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="espace" value="<%= dashboardRole %>">
+            <button class="sidebar__link btn--block" type="submit" data-busy-label="Déconnexion…">
+              <%- icon('log-out', { size: 19 }) %> Déconnexion
+            </button>
+          </form>
+        </div>
+      <% } %>
+    </aside>
+    <div class="sidebar-backdrop" data-sidebar-close></div>
+
+    <div class="dashboard__main">
+      <header class="topbar">
+        <button class="btn btn--ghost btn--icon sidebar-toggle" type="button" data-sidebar-toggle
+                aria-controls="sidebar" aria-expanded="false" aria-label="Ouvrir le menu">
+          <%- icon('menu', { size: 22 }) %>
+        </button>
+        <p class="topbar__title"><%= title %></p>
+        <div class="topbar__actions">
+          <% if (currentUser) { %>
+            <%# L'administration n'a ni messagerie ni notifications. %>
+            <% if (dashboardRole !== 'admin') { %>
+              <a class="btn btn--ghost btn--icon topbar__icon" href="/<%= dashboardRole %>/messages" aria-label="Messages" <%- hasDrawer ? 'data-open-messages' : '' %>>
+                <%- icon('message-circle', { size: 20 }) %>
+                <span class="topbar__dot" data-live-dot="messages" aria-hidden="true" <%= typeof menuBadges !== 'undefined' && menuBadges.messages ? '' : 'hidden' %>></span>
+              </a>
+            <a class="btn btn--ghost btn--icon topbar__icon" href="/<%= dashboardRole %>/notifications" aria-label="Notifications" <%- hasDrawer ? 'data-open-notifications' : '' %>>
+              <%- icon('bell', { size: 20 }) %>
+              <span class="topbar__dot" data-live-dot="notifications" aria-hidden="true" <%= typeof menuBadges !== 'undefined' && menuBadges.notifications ? '' : 'hidden' %>></span>
+            </a>
+            <% } %>
+            <%- include('../partials/theme-toggle') %>
+            <div class="topbar__user">
+              <span class="avatar avatar--sm topbar__avatar" aria-hidden="true"><%- currentUser.avatarSvg || currentUser.initials %></span>
+              <span class="topbar__user-name"><%= currentUser.firstName %></span>
+            </div>
+          <% } %>
+        </div>
+      </header>
+
+      <main class="dashboard__content" id="contenu" tabindex="-1">
+        <%- body %>
+      </main>
+    </div>
+  </div>
+  <%- include('../partials/toasts') %>
+  <%- include('../partials/confirm-dialog') %>
+  <% if (hasDrawer) { %><%- include('../partials/dash/drawer', { drawerBase: '/' + dashboardRole }) %><% } %>
+  <%- include('../partials/scripts') %>
+  <% if (currentUser) { %>
+    <%# Temps réel : messagerie et notifications (socket.io servi localement) %>
+    <script src="/vendor/socket.io/socket.io.min.js" defer></script>
+    <script src="<%= asset('js/realtime.js') %>" defer></script>
+  <% } %>
+  <% if (hasDrawer) { %>
+    <script src="<%= asset('js/chat.js') %>" defer></script>
+    <script src="<%= asset('js/notifications.js') %>" defer></script>
+    <script src="<%= asset('js/drawer.js') %>" defer></script>
+  <% } %>
+</body>
+</html>

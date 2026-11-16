@@ -1,0 +1,24 @@
+<%#
+  Message d'un formulaire renvoyé par le serveur (erreur, confirmation…), au-dessus du formulaire.
+  Il descend en place avec un léger rebond ; l'icône s'anime selon le type (même langage que les toasts).
+  Locaux : formError (texte), alertType ('danger' par défaut, ou success | warning | info), formTitle (facultatif).
+%>
+<% if (typeof formError !== 'undefined' && formError) {
+  const type = typeof alertType !== 'undefined' && alertType ? alertType : 'danger';
+  const ALERT = {
+    success: { title: "C'est fait !", glyph: '<path d="M20 6 9 17l-5-5"/>' },
+    danger: { title: 'Oups !', glyph: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>' },
+    warning: { title: 'Attention', glyph: '<path d="M12 7v6"/><path d="M12 17.5h.01"/>' },
+    info: { title: 'Bon à savoir', glyph: '<path d="M12 11v6"/><path d="M12 7.5h.01"/>' },
+  };
+  const a = ALERT[type] || ALERT.danger;
+  const title = typeof formTitle !== 'undefined' && formTitle ? formTitle : a.title;
+%>
+  <div class="form-alert form-alert--<%= type %>" role="<%= type === 'danger' || type === 'warning' ? 'alert' : 'status' %>">
+    <span class="form-alert__icon"><svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><%- a.glyph %></svg></span>
+    <div class="form-alert__body">
+      <p class="form-alert__title"><%= title %></p>
+      <p class="form-alert__text"><%= formError %></p>
+    </div>
+  </div>
+<% } %>

@@ -1,0 +1,14 @@
+<%#
+  Résumé du profil du mandataire : avatar, nom suivi des badges (vérifié, puis certifié à partir de 1 000 transactions), statut.
+  Locaux : pro, certificationThreshold, compact (facultatif : disposition horizontale du panneau latéral).
+%>
+<% const isCompact = typeof compact !== 'undefined' && compact; %>
+<% const certified = pro.transactions >= certificationThreshold; %>
+<div class="procard <%= isCompact ? 'procard--compact' : '' %>">
+  <div class="procard__avatar"><%- avatarSvg(pro.avatar, { size: isCompact ? 72 : 96 }) %></div>
+  <div class="procard__identity">
+    <p class="procard__name"><span><%= pro.firstName %> <%= pro.lastName %></span> <%- verifiedBadge({ size: 18 }) %><% if (certified) { %><%- certifiedBadge({ size: 18 }) %><% } %></p>
+    <%- include('../status-badge', { group: 'verification', value: 'approved' }) %>
+  </div>
+
+</div>

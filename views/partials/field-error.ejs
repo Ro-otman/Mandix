@@ -1,0 +1,4 @@
+<%# Erreur d'un champ renvoyée par le serveur. Locaux : id (identifiant du message), message. %>
+<% if (message) { %>
+  <p class="field__error" id="<%= id %>"><%- icon('circle-alert', { size: 14 }) %> <%= message %></p>
+<% } %>

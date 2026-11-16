@@ -1,0 +1,72 @@
+<%#
+  Vérifications : preuves de non-crédit contestées par un client. Un paiement resté « En attente » plus de
+  7 jours permet au client de demander au mandataire une preuve que l'argent n'est pas crédité ; s'il conteste
+  ces preuves, l'équipe Mandix les vérifie ici puis notifie le client (authentiques ou non conformes).
+  Locaux : requests (services/adminService.js → listVerifications), pendingMaxDays.
+  La décision est publiée dans la conversation (message « Équipe Mandix ») et notifiée au client et au mandataire.
+%>
+<%
+  const STATES = {
+    open: { label: 'À vérifier', tone: 'warning', icon: 'clock' },
+    authentic: { label: 'Preuves authentiques', tone: 'success', icon: 'circle-check' },
+    not_authentic: { label: 'Preuves non conformes', tone: 'danger', icon: 'circle-x' },
+  };
+  const daysSince = (d) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 864e5));
+  const open = requests.filter((r) => r.status === 'open').length;
+%>
+<%- include('../partials/dash/page-head', { heading: 'Vérifications', sub: `Preuves contestées par les clients : un paiement en attente depuis plus de ${pendingMaxDays} jours, des captures du mandataire jugées douteuses. Vérifiez-les, le client est notifié de votre décision.` }) %>
+
+<p class="verif-count"><strong data-verif-open><%= open %></strong> demande<%= open > 1 ? 's' : '' %> à traiter</p>
+
+<div class="verif-list" data-verif-list>
+  <% requests.forEach((r) => { const st = STATES[r.status]; %>
+    <article class="verif-card <%= r.status === 'open' ? 'is-open' : '' %>" data-verif-card data-ref="<%= r.ref %>" data-client="<%= r.client %>">
+      <header class="verif-card__head">
+        <span class="verif-card__ref mono"><%= r.ref %></span>
+        <span class="badge badge--<%= st.tone %>" data-verif-status><%- icon(st.icon, { size: 13 }) %> <%= st.label %></span>
+      </header>
+      <div class="verif-card__parties">
+        <p><span class="verif-card__role">Client</span><strong><%= r.client %></strong></p>
+        <span class="verif-card__arrow" aria-hidden="true"><%- icon('arrow-right', { size: 16 }) %></span>
+        <p><span class="verif-card__role">Mandataire</span><a href="/admin/mandataires/<%= r.slug %>"><strong><%= r.pro %></strong></a></p>
+      </div>
+      <dl class="verif-card__facts">
+        <div><dt>Compte</dt><dd><span class="stats-account"><%- serviceLogo(r.type, { size: 18 }) %> <%= r.account %></span></dd></div>
+        <div><dt>Montant</dt><dd><%= r.amount %></dd></div>
+        <div><dt>En attente depuis</dt><dd><%= fmt.formatDate(r.pendingSince) %> <span class="text-muted">(<%= daysSince(r.pendingSince) %> jours)</span></dd></div>
+        <div><dt>Vérification demandée</dt><dd><%= fmt.formatDateTime(r.requestedAt) %></dd></div>
+      </dl>
+      <div class="verif-card__evidence">
+        <p class="verif-card__role">Preuves envoyées par le mandataire</p>
+        <ul class="verif-files">
+          <% r.evidence.forEach((f) => { %>
+            <li>
+              <%# ?espace=admin : session administrateur, même si le navigateur a aussi une session client ou mandataire %>
+              <% if (f.preview) { %>
+                <a class="verif-file verif-file--image" href="<%= f.preview %>?espace=admin" target="_blank" rel="noopener"><img src="<%= f.preview %>?espace=admin" alt="Preuve : <%= f.name %>" loading="lazy"><span><%= f.name %></span></a>
+              <% } else { %>
+                <a class="verif-file" href="<%= f.url %>?espace=admin" target="_blank" rel="noopener"><%- icon('file-text', { size: 20 }) %><span><%= f.name %><% if (f.size) { %> · <%= Math.round(f.size / 1024) %> Ko<% } %></span></a>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <footer class="verif-card__foot" data-verif-actions <%= r.status === 'open' ? '' : 'hidden' %>>
+        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Les preuves de <%= r.pro %> sont authentiques : le paiement n'est pas encore crédité. <%= r.client %> sera notifié et le délai de <%= pendingMaxDays %> jours repartira." data-confirm-title="Confirmer : preuves authentiques" data-confirm-label="Confirmer">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="authentic">
+          <button class="btn btn--success" type="submit"><%- icon('circle-check', { size: 16 }) %> Preuves authentiques</button>
+        </form>
+        <form method="post" action="/admin/verifications/<%= r.ref %>/decision" data-confirm="Les preuves de <%= r.pro %> ne sont pas conformes. <%= r.client %> sera notifié et le dossier passera en litige." data-confirm-title="Confirmer : preuves non conformes" data-confirm-label="Confirmer" data-confirm-tone="danger">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="decision" value="not_authentic">
+          <button class="btn btn--danger" type="submit"><%- icon('circle-x', { size: 16 }) %> Preuves non conformes</button>
+        </form>
+      </footer>
+      <% if (r.decidedAt) { %><p class="verif-card__decided">Décision du <%= fmt.formatDateTime(r.decidedAt) %> · client notifié</p><% } %>
+    </article>
+  <% }) %>
+</div>
+
+<%# Modèle d'une demande faite en direct dans la messagerie de démonstration %>
+
+
+

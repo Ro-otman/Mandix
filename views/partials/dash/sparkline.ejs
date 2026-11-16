@@ -1,0 +1,20 @@
+<%#
+  Courbe compacte d'une seule série, pour le chiffre vedette (.stat-hero).
+  Locaux : values (nombres, mois complets), sparkLabel (description lue par les lecteurs d'écran), sparkCaption.
+%>
+<%
+  const sW = 260, sH = 96, sPad = 6;
+  const sMin = Math.min(...values), sMax = Math.max(...values);
+  const sx = (i) => sPad + (i * (sW - 2 * sPad)) / (values.length - 1);
+  const sy = (v) => sH - sPad - ((v - sMin) / (sMax - sMin || 1)) * (sH - 2 * sPad);
+  const pts = values.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(' ');
+  const last = values.length - 1;
+%>
+<figure class="stat-hero__spark">
+  <svg viewBox="0 0 <%= sW %> <%= sH %>" role="img" aria-label="<%= sparkLabel %>">
+    <polygon class="spark__area" points="<%= sx(0).toFixed(1) %>,<%= sH %> <%= pts %> <%= sx(last).toFixed(1) %>,<%= sH %>"/>
+    <polyline class="spark__line" points="<%= pts %>"/>
+    <circle class="spark__dot" cx="<%= sx(last).toFixed(1) %>" cy="<%= sy(values[last]).toFixed(1) %>" r="4.5"/>
+  </svg>
+  <figcaption><%= sparkCaption %></figcaption>
+</figure>

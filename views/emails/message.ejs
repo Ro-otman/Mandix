@@ -1,0 +1,187 @@
+<%#
+  Modèle des e-mails transactionnels Mandix.
+  Compatible messageries : mise en page en tableaux, styles en ligne, largeur 600 px. Aucune image ni pièce jointe :
+  le logo (carré bleu « M ») est dessiné en HTML, il s'affiche partout, même quand les images sont bloquées.
+  Textes échappés, sauf rich() qui échappe puis met en gras les passages entre doubles astérisques.
+  Locaux : appName, baseUrl, year, preheader, eyebrow, accent, title, paragraphs, button,
+  secondaryLink, expiry, details, steps, notice (tone, title, text, link facultatif), fallback (lien à copier), rich.
+%><%
+  const F = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  const NAVY = "#0B1B3A", BLUE = "#1747B5", TEXT = "#475569", MUTED = "#64748B";
+  const tones = {
+    info: { bg: "#F1F6FF", border: BLUE, title: "#0F3A99" },
+    warning: { bg: "#FFF8EB", border: "#E9B23F", title: "#8A4B06" },
+    danger: { bg: "#FEF3F2", border: "#D64545", title: "#9B2C2C" },
+  };
+%><!doctype html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <meta name="x-apple-disable-message-reformatting">
+  <title><%= title %></title>
+  <style>
+    @media (max-width: 620px) {
+      .mx-px { padding-left: 24px !important; padding-right: 24px !important; }
+      .mx-h1 { font-size: 24px !important; }
+      .mx-btn td, .mx-btn a { display: block !important; text-align: center !important; }
+      .mx-hide-sm { display: none !important; }
+    }
+    a { color: <%= BLUE %>; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#EEF2F8;-webkit-text-size-adjust:100%;">
+  <%# Texte d'aperçu affiché par la messagerie à côté du sujet (masqué dans le message) %>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;"><%= preheader %>&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EEF2F8;">
+    <tr>
+      <td align="center" style="padding:32px 12px 40px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:18px;overflow:hidden;">
+          <%# En-tête : marque %>
+          <tr>
+            <td class="mx-px" style="background:<%= NAVY %>;padding:22px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="40" height="40" align="center" valign="middle" bgcolor="<%= BLUE %>" style="width:40px;height:40px;border-radius:11px;background:<%= BLUE %>;font-family:<%= F %>;font-size:22px;font-weight:800;line-height:40px;color:#FFFFFF;mso-line-height-rule:exactly;">M</td>
+                        <td style="padding-left:10px;vertical-align:middle;font-family:<%= F %>;font-size:21px;font-weight:700;letter-spacing:-0.3px;color:#FFFFFF;"><%= appName %></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td class="mx-hide-sm" align="right" style="vertical-align:middle;font-family:<%= F %>;font-size:12px;color:#9FB0D0;">
+                    Transactions d'un compte à l'autre
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr><td style="height:4px;line-height:4px;font-size:0;background:#E9B23F;">&nbsp;</td></tr>
+
+          <%# Message principal %>
+          <tr>
+            <td class="mx-px" style="padding:40px 40px 4px;font-family:<%= F %>;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:<%= accent %>;"><%= eyebrow %></p>
+              <h1 class="mx-h1" style="margin:0 0 18px;font-family:<%= F %>;font-size:28px;line-height:1.25;font-weight:800;letter-spacing:-0.5px;color:<%= NAVY %>;"><%= title %></h1>
+              <% paragraphs.forEach((p) => { %>
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:<%= TEXT %>;"><%- rich(p) %></p>
+              <% }) %>
+
+              <% if (button) { %>
+                <table role="presentation" class="mx-btn" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
+                  <tr>
+                    <td align="center" bgcolor="<%= BLUE %>" style="border-radius:12px;background:<%= BLUE %>;">
+                      <a href="<%= button.url %>" target="_blank" style="display:inline-block;padding:16px 32px;font-family:<%= F %>;font-size:16px;font-weight:700;line-height:1.2;color:#FFFFFF;text-decoration:none;border-radius:12px;"><%= button.label %>&nbsp;&rarr;</a>
+                    </td>
+                  </tr>
+                </table>
+              <% } %>
+              <% if (secondaryLink) { %>
+                <p style="margin:16px 0 0;font-size:14px;color:<%= MUTED %>;"><%= secondaryLink.before %> <a href="<%= secondaryLink.url %>" target="_blank" style="color:<%= BLUE %>;font-weight:600;text-decoration:none;"><%= secondaryLink.label %></a></p>
+              <% } %>
+              <% if (expiry) { %>
+                <p style="margin:20px 0 0;">
+                  <span style="display:inline-block;padding:7px 14px;font-size:13px;font-weight:600;color:<%= TEXT %>;background:#F1F5F9;border-radius:999px;">&#9201;&nbsp; <%= expiry %></span>
+                </p>
+              <% } %>
+            </td>
+          </tr>
+
+          <%# Détails (date, appareil, compte…) %>
+          <% if (details && details.length) { %>
+            <tr>
+              <td class="mx-px" style="padding:28px 40px 0;font-family:<%= F %>;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FC;border:1px solid #E8EDF4;border-radius:12px;">
+                  <% details.forEach(([label, value], i) => { %>
+                    <tr>
+                      <td style="padding:13px 18px;<%= i ? 'border-top:1px solid #E8EDF4;' : '' %>font-size:13px;color:<%= MUTED %>;"><%= label %></td>
+                      <td align="right" style="padding:13px 18px;<%= i ? 'border-top:1px solid #E8EDF4;' : '' %>font-size:14px;font-weight:600;color:<%= NAVY %>;"><%= value %></td>
+                    </tr>
+                  <% }) %>
+                </table>
+              </td>
+            </tr>
+          <% } %>
+
+          <%# Étapes suivantes %>
+          <% if (steps) { %>
+            <tr>
+              <td class="mx-px" style="padding:32px 40px 0;font-family:<%= F %>;">
+                <p style="margin:0 0 16px;font-size:16px;font-weight:700;color:<%= NAVY %>;"><%= steps.title %></p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <% steps.items.forEach(([stepTitle, stepText], i) => { %>
+                    <tr>
+                      <td width="44" valign="top" style="padding:0 0 16px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                          <td align="center" valign="middle" width="30" height="30" style="width:30px;height:30px;border-radius:15px;background:#E8EFFE;font-size:14px;font-weight:800;color:<%= BLUE %>;"><%= i + 1 %></td>
+                        </tr></table>
+                      </td>
+                      <td valign="top" style="padding:4px 0 16px;font-size:15px;line-height:1.55;color:<%= TEXT %>;">
+                        <strong style="color:<%= NAVY %>;"><%= stepTitle %></strong> — <%= stepText %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </table>
+              </td>
+            </tr>
+          <% } %>
+
+          <%# Lien de secours si le bouton ne s'ouvre pas (liens porteurs d'un jeton uniquement) %>
+          <% if (button && fallback) { %>
+            <tr>
+              <td class="mx-px" style="padding:24px 40px 0;font-family:<%= F %>;">
+                <p style="margin:0 0 8px;font-size:13px;color:<%= MUTED %>;">Le bouton ne fonctionne pas ? Copiez ce lien dans votre navigateur :</p>
+                <p style="margin:0;padding:12px 14px;font-family:Consolas, Menlo, monospace;font-size:12px;line-height:1.5;word-break:break-all;background:#F7F9FC;border:1px dashed #D5DDE8;border-radius:10px;"><a href="<%= button.url %>" target="_blank" style="color:<%= BLUE %>;text-decoration:none;"><%= button.url %></a></p>
+              </td>
+            </tr>
+          <% } %>
+
+          <%# Avertissement de sécurité %>
+          <% if (notice) { const t = tones[notice.tone] || tones.info; %>
+            <tr>
+              <td class="mx-px" style="padding:24px 40px 0;font-family:<%= F %>;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:<%= t.bg %>;border-left:4px solid <%= t.border %>;border-radius:10px;">
+                  <tr>
+                    <td style="padding:16px 18px;">
+                      <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:<%= t.title %>;"><%= notice.title %></p>
+                      <p style="margin:0;font-size:14px;line-height:1.55;color:<%= TEXT %>;"><%- rich(notice.text) %><% if (notice.link) { %> <a href="<%= notice.link.url %>" target="_blank" style="color:<%= t.title %>;font-weight:700;text-decoration:underline;"><%= notice.link.label %></a><% } %></p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          <% } %>
+
+          <%# Signature %>
+          <tr>
+            <td class="mx-px" style="padding:32px 40px 40px;font-family:<%= F %>;">
+              <p style="margin:0;font-size:15px;line-height:1.6;color:<%= TEXT %>;">À très vite,<br><strong style="color:<%= NAVY %>;">L'équipe <%= appName %></strong></p>
+            </td>
+          </tr>
+        </table>
+
+        <%# Pied de page %>
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="padding:24px 24px 0;text-align:center;font-family:<%= F %>;font-size:12px;line-height:1.65;color:#8592A6;">
+              <p style="margin:0 0 12px;">
+                <a href="<%= baseUrl %>/aide" target="_blank" style="color:#5B6B82;text-decoration:underline;">Centre d'aide</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+                <a href="<%= baseUrl %>/conditions-utilisation" target="_blank" style="color:#5B6B82;text-decoration:underline;">Conditions</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+                <a href="<%= baseUrl %>/confidentialite" target="_blank" style="color:#5B6B82;text-decoration:underline;">Confidentialité</a>
+              </p>
+              <p style="margin:0;">Vous recevez cet e-mail à la suite d'une action liée à votre compte <%= appName %>.<br>Il a été envoyé automatiquement : merci de ne pas y répondre.<br>© <%= year %> <%= appName %></p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,8 @@
+<%#
+  Disponibilité d'un mandataire. Locaux : status (utils/presence.js → { online, label, iso }), extraClass (facultatif).
+  « En ligne » vient du serveur ; pour un absent, public/js/app.js fait avancer « il y a X min » toutes les 30 s.
+%>
+<p class="presence <%= status.online ? 'is-online' : '' %> <%= typeof extraClass !== 'undefined' ? extraClass : '' %>" data-presence<% if (status.iso && !status.online) { %> data-last-seen="<%= status.iso %>"<% } %>>
+  <span class="presence__dot" aria-hidden="true"></span>
+  <span data-presence-label><%= status.label %></span>
+</p>

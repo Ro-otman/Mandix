@@ -1,0 +1,195 @@
+<%# Guide de style — disponible uniquement hors production (/dev/styleguide). %>
+<section class="page-hero">
+  <div class="container">
+    <p class="eyebrow"><%- icon('construction', { size: 16 }) %> Développement uniquement</p>
+    <h1>Système de design</h1>
+    <p>Référence visuelle des composants partagés par les espaces public, client, mandataire et administrateur.</p>
+    <div class="cluster">
+      <a class="btn btn--secondary btn--sm" href="/dev/dashboard?role=client">Aperçu espace client</a>
+      <a class="btn btn--secondary btn--sm" href="/dev/dashboard?role=mandataire">Aperçu espace mandataire</a>
+      <a class="btn btn--secondary btn--sm" href="/dev/dashboard?role=admin">Aperçu administration</a>
+    </div>
+  </div>
+</section>
+
+<div class="container section stack-lg">
+
+  <section class="stack">
+    <h2>Couleurs</h2>
+    <div class="grid grid--4">
+      <% [
+        ['Bleu principal', '#174EA6', 'sg-swatch--primary'], ['Bleu secondaire', '#2563EB', 'sg-swatch--accent'],
+        ['Bleu très clair', '#EFF6FF', 'sg-swatch--soft'], ['Vert validation', '#16A36A', 'sg-swatch--success'],
+        ['Rouge alerte', '#DC2626', 'sg-swatch--danger'], ['Fond général', '#F7F9FC', 'sg-swatch--bg'],
+        ['Texte principal', '#172033', 'sg-swatch--text'], ['Bordures', '#E2E8F0', 'sg-swatch--border'],
+      ].forEach(([name, hex, cls]) => { %>
+        <div class="card sg-swatch-card">
+          <div class="sg-swatch <%= cls %>"></div>
+          <div class="card__body"><strong><%= name %></strong><p class="text-sm text-muted"><%= hex %></p></div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Typographie</h2>
+    <div class="card card--padded stack">
+      <h1>Titre H1 — Inter 700</h1>
+      <h2>Titre H2 de section</h2>
+      <h3>Titre H3 de carte</h3>
+      <p>Texte courant : la plateforme met en relation des clients avec des professionnels vérifiés.</p>
+      <p class="text-muted text-sm">Texte secondaire, utilisé pour les aides et métadonnées.</p>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Boutons</h2>
+    <div class="card card--padded cluster">
+      <button class="btn btn--primary" type="button">Principal</button>
+      <button class="btn btn--secondary" type="button">Secondaire</button>
+      <button class="btn" type="button">Contour</button>
+      <button class="btn btn--ghost" type="button">Discret</button>
+      <button class="btn btn--success" type="button"><%- icon('check', { size: 18 }) %> Valider</button>
+      <button class="btn btn--danger" type="button">Refuser</button>
+      <button class="btn btn--primary" type="button" disabled>Désactivé</button>
+      <button class="btn btn--primary btn--lg" type="button">Grand</button>
+      <button class="btn btn--sm" type="button">Petit</button>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Formulaires</h2>
+    <div class="card card--padded grid grid--2">
+      <div class="field">
+        <label class="field__label" for="sg-email">Adresse e-mail</label>
+        <input class="input" id="sg-email" type="email" placeholder="nom@exemple.bj" autocomplete="off">
+        <p class="field__hint">Nous ne la partageons jamais sans votre accord.</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="sg-phone">Téléphone</label>
+        <input class="input" id="sg-phone" type="tel" value="+229 01" aria-invalid="true" aria-describedby="sg-phone-error">
+        <p class="field__error" id="sg-phone-error"><%- icon('circle-alert', { size: 14 }) %> Numéro incomplet.</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="sg-city">Ville</label>
+        <select class="select" id="sg-city"><option>Cotonou</option><option>Porto-Novo</option></select>
+      </div>
+      <div class="field">
+        <label class="field__label" for="sg-password">Mot de passe</label>
+        <div class="input-group">
+          <input class="input" id="sg-password" type="password" value="exemple">
+          <button class="btn btn--ghost btn--icon sg-password-toggle" type="button" data-password-toggle="sg-password"
+                  aria-label="Afficher le mot de passe" aria-pressed="false"><%- icon('eye', { size: 18 }) %></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field__label" for="sg-need">Description du besoin <span class="field__optional">(facultatif)</span></label>
+        <textarea class="textarea" id="sg-need" placeholder="Ne saisissez jamais vos codes bancaires."></textarea>
+      </div>
+      <label class="checkbox">
+        <input type="checkbox">
+        <span>J'accepte les conditions d'utilisation et la politique de confidentialité.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Badges et statuts</h2>
+    <div class="card card--padded stack">
+      <div class="cluster">
+        <span class="badge badge--verified"><%- icon('badge-check', { size: 14 }) %> Profil vérifié</span>
+        <span class="tag">Ouverture de compte</span>
+      </div>
+      <% Object.entries(labels.STATUS).forEach(([group, values]) => { %>
+        <div class="cluster">
+          <strong class="text-sm sg-group"><%= group %></strong>
+          <% Object.keys(values).forEach((value) => { %><%- include('../partials/status-badge', { group, value }) %><% }) %>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Alertes, toasts et modales</h2>
+    <div class="grid grid--2">
+      <div class="stack-sm">
+        <div class="alert"><%- icon('info', { size: 18 }) %><p>Votre dossier est en cours d'examen.</p></div>
+        <div class="alert alert--success"><%- icon('circle-check', { size: 18 }) %><p>Vos justificatifs ont été validés.</p></div>
+        <div class="alert alert--warning"><%- icon('triangle-alert', { size: 18 }) %><p>Un document expire dans 15 jours.</p></div>
+        <div class="alert alert--danger"><%- icon('circle-alert', { size: 18 }) %><p>Le document transmis est illisible.</p></div>
+      </div>
+      <div class="card card--padded stack">
+        <p class="text-muted text-sm">Ces boutons utilisent window.MC.toast et les modales &lt;dialog&gt; natives.</p>
+        <div class="cluster">
+          <button class="btn" type="button" data-demo-toast="success">Toast succès</button>
+          <button class="btn" type="button" data-demo-toast="danger">Toast erreur</button>
+          <button class="btn" type="button" data-demo-toast="info">Toast info</button>
+        </div>
+        <div class="cluster">
+          <button class="btn btn--secondary" type="button" data-modal-open="sg-modal">Ouvrir une modale</button>
+          <form action="/dev/styleguide" method="get" data-confirm="Cette demande sera refusée et le client sera prévenu. Continuer ?"
+                data-confirm-title="Refuser la demande" data-confirm-label="Refuser" data-confirm-tone="danger">
+            <button class="btn btn--danger" type="submit">Action sensible</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Carte prestataire</h2>
+    <p class="text-muted text-sm">Voir la marketplace : <a href="/mandataires">/mandataires</a> (profils de démonstration si DEMO_CONTENT=true).</p>
+  </section>
+
+  <section class="stack">
+    <h2>Chargement et états vides</h2>
+    <div class="grid grid--2">
+      <div class="card card--padded stack" aria-busy="true" aria-label="Chargement">
+        <div class="cluster"><span class="skeleton skeleton--circle"></span><span class="skeleton skeleton--title"></span></div>
+        <span class="skeleton skeleton--text"></span>
+        <span class="skeleton skeleton--text"></span>
+        <span class="skeleton skeleton--short"></span>
+      </div>
+      <div class="card">
+        <%- include('../partials/empty-state', { emptyIllustration: 'search', emptyTitle: 'Aucun rendez-vous à venir',
+              emptyText: 'Vos prochains rendez-vous apparaîtront ici.', emptyAction: { href: '/mandataires', label: 'Trouver un mandataire' } }) %>
+      </div>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Tableau responsive</h2>
+    <p class="text-muted text-sm">Sous 720 px de large, chaque ligne devient une carte.</p>
+    <div class="card table-wrap">
+      <table class="table table--responsive">
+        <thead><tr><th>Référence</th><th>Service</th><th>Date</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td data-label="Référence">EXEMPLE-01</td><td data-label="Service">Ouverture de compte</td><td data-label="Date"><%= fmt.formatDate(new Date()) %></td><td data-label="Statut"><%- include('../partials/status-badge', { group: 'request', value: 'pending' }) %></td></tr>
+          <tr><td data-label="Référence">EXEMPLE-02</td><td data-label="Service">Dossier de crédit</td><td data-label="Date"><%= fmt.formatDate(new Date()) %></td><td data-label="Statut"><%- include('../partials/status-badge', { group: 'request', value: 'completed' }) %></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Chronologie</h2>
+    <div class="card card--padded">
+      <ol class="timeline">
+        <li class="timeline__item"><span class="timeline__dot"></span><strong>Demande envoyée</strong><p class="timeline__meta">Exemple d'événement</p></li>
+        <li class="timeline__item"><span class="timeline__dot"></span><strong>Demande acceptée</strong><p class="timeline__meta">Exemple d'événement</p></li>
+        <li class="timeline__item"><span class="timeline__dot"></span><strong>Prestation terminée</strong><p class="timeline__meta">Exemple d'événement</p></li>
+      </ol>
+    </div>
+  </section>
+</div>
+
+<dialog class="modal" id="sg-modal" aria-labelledby="sg-modal-title">
+  <div class="modal__header">
+    <span class="modal__icon"><%- icon('info', { size: 22 }) %></span>
+    <h2 class="modal__title" id="sg-modal-title">Exemple de modale</h2>
+  </div>
+  <div class="modal__body"><p>Fermeture par Échap, par le bouton ou par un clic sur le fond. Le focus revient sur le bouton d'ouverture.</p></div>
+  <div class="modal__footer"><button class="btn btn--primary" type="button" data-modal-close>Compris</button></div>
+</dialog>
+
+<script src="<%= asset('js/dev-styleguide.js') %>" defer></script>

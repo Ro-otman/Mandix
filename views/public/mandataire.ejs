@@ -1,0 +1,7 @@
+<%# Fiche publique d'un mandataire : la même que dans l'espace client (mode « public »). Local : profile. %>
+<section class="public-sheet">
+  <div class="container public-sheet__inner">
+    <nav aria-label="Fil d'Ariane" class="crumbs"><ol class="breadcrumb"><li><a href="/mandataires">Mandataires</a></li><li aria-hidden="true">/</li><li aria-current="page"><%= profile.fullName %></li></ol></nav>
+    <%- include('../partials/dash/mandataire-sheet', { profile, mode: 'public' }) %>
+  </div>
+</section>

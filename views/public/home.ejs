@@ -1,0 +1,344 @@
+<%#
+  Accueil public. Locaux : countries, accountTypes, featuredMandataires, reviews, faq, filters, limitTiers,
+  heroAvatar (illustration de la conversation).
+  La conversation de la bannière est une ILLUSTRATION du parcours (aucune donnée réelle) : elle est décorative
+  (aria-hidden), le texte qui l'accompagne décrit les mêmes étapes.
+  Mise en page : grand écran = texte | illustration, recherche à cheval sur le bas du panneau ;
+  tablette et mobile = texte, recherche, puis illustration (la recherche reste visible sans défiler).
+  Le titre et l'accroche s'affichent immédiatement (aucune animation d'entrée : premier affichage plus rapide).
+%>
+
+<!-- ======================================================================= Bannière -->
+<section class="hx" aria-labelledby="hx-title">
+  <div class="container">
+    <div class="hx__panel">
+      <span class="hx__deco" aria-hidden="true"></span>
+      <div class="hx__text">
+        <p class="hx__eyebrow"><span class="hx__eyebrow-dot" aria-hidden="true"></span> Plateforme de mise en relation encadrée</p>
+        <h1 class="hx__title" id="hx-title">
+          D'un compte à l'autre, avec un mandataire <span class="hx__hl">de confiance.</span>
+        </h1>
+        <p class="hx__lead">PayPal, Wise, Western Union, virement, crypto… Faites vos transactions avec un mandataire qui détient le compte qu'il vous faut, indiquez votre montant et suivez chaque étape dans une messagerie guidée, preuves à l'appui.</p>
+      </div>
+
+      <ul class="hx__trust" data-hero-item>
+        <li><%- icon('messages-square', { size: 17 }) %> Messagerie guidée</li>
+        <li><%- icon('file-check', { size: 17 }) %> Preuve à chaque étape</li>
+        <li><%- icon('scale', { size: 17 }) %> Équipe Mandix en cas de litige</li>
+      </ul>
+
+      <div class="hx__visual" data-hero-item aria-hidden="true">
+        <div class="hx-chat" data-hx-chat>
+          <div class="hx-chat__head">
+            <span class="hx-chat__avatar"><%- heroAvatar %><span class="hx-chat__online"></span></span>
+            <div>
+              <p class="hx-chat__name">Votre mandataire <%- verifiedBadge({ size: 16 }) %></p>
+              <p class="hx-chat__status">En ligne</p>
+            </div>
+          </div>
+          <%#
+            Même déroulé et mêmes bulles que la vraie messagerie (classes de spaces.css, textes de public/js/chat.js),
+            vue du côté client : demande → montant → coordonnées du mandataire → preuve de paiement → validation
+            → compte de réception → envoi avec capture → confirmation de réception. La conversation défile
+            jusqu'aux dernières étapes, comme un fil ouvert sur ses derniers messages. Coordonnées masquées.
+          %>
+          <% const read = icon('check-check', { size: 13 }); %>
+          <div class="hx-chat__body">
+            <div class="hx-chat__track">
+              <div class="chat__day"><span>Aujourd'hui</span></div>
+              <div class="msg msg--me" data-hx-step="wait" data-hx-text="Votre mandataire va vous demander le montant de la transaction…"><div class="msg__bubble">Je veux faire une transaction avec votre compte PayPal.</div><span class="msg__meta">10:02 <%- read %></span></div>
+              <div class="msg msg--them" data-hx-step="action" data-hx-text="Indiquez le montant de votre transaction"><div class="msg__bubble">Quel est le montant de votre transaction ?</div><span class="msg__meta">10:03</span></div>
+              <div class="msg msg--me" data-hx-step="wait" data-hx-text="Votre mandataire va vous envoyer ses coordonnées de paiement…"><div class="msg__bubble">Montant de la transaction : <strong>250 €</strong></div><span class="msg__meta">10:03 <%- read %></span></div>
+              <div class="msg msg--them" data-hx-step="action" data-hx-text="Après le paiement, envoyez votre preuve">
+                <div class="msg__bubble"><span>Voici mes coordonnées PayPal pour la transaction. Type d'envoi : Amis et proches.</span><span class="msg__secret"><code class="msg__secret-value">••••••••@•••••.com</code><span class="msg__copy"><%- icon('copy', { size: 13 }) %></span></span></div>
+                <span class="msg__meta">10:05</span>
+              </div>
+              <div class="msg msg--me" data-hx-step="wait" data-hx-text="Votre mandataire vérifie votre preuve de paiement…">
+                <div class="msg__bubble msg__bubble--proof"><span class="msg__label">Preuve de paiement</span><span class="hx-shot"><span class="hx-shot__icon"><%- icon('check', { size: 12, strokeWidth: 3 }) %></span><span class="hx-shot__lines"><span></span><span></span></span><strong>250,00 €</strong></span><span class="msg__status msg__status--new hx-status-before"><%- icon('clock', { size: 12, strokeWidth: 2.5 }) %> À vérifier</span><span class="msg__status msg__status--validated hx-status-after"><%- icon('check', { size: 12, strokeWidth: 2.5 }) %> Validé</span></div>
+                <span class="msg__meta">10:12 <%- read %></span>
+              </div>
+              <div class="msg msg--them" data-hx-validates data-hx-step="action" data-hx-text="Paiement validé : sur quel compte souhaitez-vous recevoir l'argent ?"><div class="msg__bubble msg__bubble--status msg__bubble--validated"><span class="msg__status-icon"><%- icon('check', { size: 14, strokeWidth: 2.5 }) %></span><span>Validé : paiement bien reçu.</span></div><span class="msg__meta">10:14</span></div>
+              <div class="msg msg--me" data-hx-step="wait" data-hx-text="Votre mandataire va vous envoyer l'argent et la capture du transfert…">
+                <div class="msg__bubble"><span>Envoyez l'argent sur mon compte Wise.</span><span class="msg__secret"><code class="msg__secret-value">•••• •••• •••• ••••</code></span></div>
+                <span class="msg__meta">10:15 <%- read %></span>
+              </div>
+              <div class="msg msg--them" data-hx-step="answer">
+                <div class="msg__bubble msg__bubble--proof msg__bubble--sent"><span class="msg__sent-head"><%- icon('check', { size: 16 }) %><span>J'ai envoyé l'argent sur votre compte Wise. Voici la capture du transfert.</span></span><span class="hx-shot hx-shot--sent"><span class="hx-shot__icon"><%- icon('send', { size: 11, strokeWidth: 2.5 }) %></span><span class="hx-shot__lines"><span></span><span></span></span></span></div>
+                <span class="msg__meta">10:21</span>
+              </div>
+            </div>
+          </div>
+          <div class="hx-chat__foot">
+            <%# Bas de la conversation : ce que le client voit à chaque étape (attente ou action), puis les réponses proposées. %>
+            <div class="hx-chat__step" data-hx-status><span class="flow__dots"><span></span><span></span><span></span></span><p class="hx-chat__step-text" data-hx-status-text></p></div>
+            <div class="hx-chat__answer">
+              <p class="flow__title">Avez-vous reçu l'argent sur votre compte Wise ?</p>
+              <div class="flow__actions">
+                <span class="flow-chip flow-chip--validate"><%- icon('check', { size: 15 }) %> J'ai bien reçu l'argent</span>
+                <span class="flow-chip flow-chip--pending"><%- icon('clock', { size: 15 }) %> Je n'ai pas encore reçu l'argent</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hx-float hx-float--level">
+          <%- verifiedBadge({ size: 30 }) %>
+          <div><strong>Niveau 10 · certifié</strong><span>Plafond : plus de 10 000 €</span></div>
+        </div>
+        <div class="hx-float hx-float--delay">
+          <span class="hx-float__icon"><%- icon('hourglass', { size: 17 }) %></span>
+          <div><strong>7 jours maximum</strong><span>Paiement en attente : preuves exigées</span></div>
+        </div>
+        <div class="hx-float hx-float--logos">
+          <span class="hx-logos"><% ['paypal', 'wise', 'westernunion', 'crypto'].forEach((s) => { %><%- serviceLogo(s, { size: 22 }) %><% }) %></span>
+          <span>+<%= accountTypes.length %> comptes</span>
+        </div>
+      </div>
+
+      <div class="hx__search" data-hero-item>
+        <%- include('../partials/search-bar', { action: '/mandataires', idPrefix: 'hx' }) %>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= Comptes pris en charge -->
+<section class="band band--white hx-services" aria-labelledby="services-title">
+  <div class="container">
+    <div class="band-head band-head--center" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Comptes pris en charge</p>
+        <h2 id="services-title">Le compte qu'il vous faut, chez un mandataire qui l'a</h2>
+        <p>Chaque mandataire publie ses comptes et le pays où ils sont ouverts, librement, quelle que soit sa nationalité.</p>
+      </div>
+    </div>
+    <ul class="svc-grid" data-reveal data-reveal-stagger>
+      <% accountTypes.forEach((t) => { %>
+        <li><a class="svc" href="/mandataires?type=<%= encodeURIComponent(t.slug) %>"><span class="svc__logo"><%- serviceLogo(t.slug, { size: 30 }) %></span><span class="svc__name"><%= t.name %></span><%- icon('arrow-up-right', { size: 15, className: 'svc__go' }) %></a></li>
+      <% }) %>
+    </ul>
+    <p class="svc-note">Mandix n'est affilié à aucun de ces services ; les marques appartiennent à leurs propriétaires.</p>
+  </div>
+</section>
+
+<!-- ======================================================================= Comment ça marche -->
+<section class="band band--mist" id="comment-ca-marche" aria-labelledby="how-title">
+  <div class="container">
+    <div class="band-head" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Comment ça marche</p>
+        <h2 id="how-title">Quatre étapes, suivies de bout en bout</h2>
+        <p>Toute la transaction se déroule dans une messagerie guidée : des messages préfaits, aucune saisie libre, une trace de chaque étape.</p>
+      </div>
+      <a class="link-arrow" href="/mandataires">Trouver un mandataire <%- icon('arrow-right', { size: 18 }) %></a>
+    </div>
+    <ol class="flow-steps" data-reveal data-reveal-stagger>
+      <li class="flow-step">
+        <span class="flow-step__num">1</span>
+        <span class="flow-step__icon"><%- icon('search', { size: 22, strokeWidth: 1.9 }) %></span>
+        <h3>Choisissez</h3>
+        <p>Un mandataire et l'un de ses comptes : PayPal, Wise, Western Union, virement…</p>
+      </li>
+      <li class="flow-step">
+        <span class="flow-step__num">2</span>
+        <span class="flow-step__icon"><%- icon('banknote', { size: 22, strokeWidth: 1.9 }) %></span>
+        <h3>Indiquez le montant</h3>
+        <p>Dans la devise de votre choix, contrôlé selon le plafond du mandataire.</p>
+      </li>
+      <li class="flow-step">
+        <span class="flow-step__num">3</span>
+        <span class="flow-step__icon"><%- icon('file-check', { size: 22, strokeWidth: 1.9 }) %></span>
+        <h3>Payez, envoyez la preuve</h3>
+        <p>Le mandataire valide votre paiement, puis vous indiquez où recevoir l'argent.</p>
+      </li>
+      <li class="flow-step">
+        <span class="flow-step__num">4</span>
+        <span class="flow-step__icon"><%- icon('star', { size: 22, strokeWidth: 1.9 }) %></span>
+        <h3>Recevez et évaluez</h3>
+        <p>Capture du transfert, confirmation de réception, puis votre évaluation.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ======================================================================= Protections -->
+<section class="band band--white" aria-labelledby="safety-title">
+  <div class="container">
+    <div class="band-head" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Vos protections</p>
+        <h2 id="safety-title">Chaque étape est encadrée</h2>
+        <p>Des règles simples, appliquées à toutes les transactions.</p>
+      </div>
+    </div>
+    <div class="safety-grid" data-reveal data-reveal-stagger>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('messages-square', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>Messagerie guidée</h3>
+        <p>Messages préfaits uniquement : pas de liens douteux ni de demandes improvisées. Seul le montant se saisit, en chiffres.</p>
+      </article>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('images', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>Preuves à l'appui</h3>
+        <p>Preuve de paiement côté client, capture du transfert côté mandataire : chaque envoi laisse une trace.</p>
+      </article>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('hourglass', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>7 jours maximum</h3>
+        <p>Un paiement « en attente » plus de 7 jours ? Vous pouvez exiger des preuves, vérifiées par notre équipe si besoin.</p>
+      </article>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('gauge', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>Plafonds par niveau</h3>
+        <p>Le montant autorisé grandit avec le nombre de transactions menées à terme par le mandataire.</p>
+      </article>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('lock', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>Coordonnées protégées</h3>
+        <p>Visibles du seul destinataire. Jamais de mot de passe, de code, de numéro de carte ni de phrase de récupération.</p>
+      </article>
+      <article class="safety">
+        <span class="safety__icon"><%- icon('star', { size: 22, strokeWidth: 1.8 }) %></span>
+        <h3>Évaluations obligatoires</h3>
+        <p>Chaque transaction se termine par une note du client, qui forge la réputation du mandataire.</p>
+      </article>
+    </div>
+    <p class="safety-note" data-reveal><%- icon('info', { size: 17 }) %> <span>Mandix ne détient, ne reçoit ni ne transfère aucun fonds : les paiements se font directement entre vous et le mandataire, dans le cadre suivi par la plateforme.</span></p>
+  </div>
+</section>
+
+<!-- ======================================================================= Niveaux -->
+<section class="band band--navy" aria-labelledby="levels-title">
+  <div class="container levels">
+    <div class="levels__text" data-reveal>
+      <p class="kicker">Niveaux et certification</p>
+      <h2 id="levels-title">Des plafonds qui grandissent avec la confiance</h2>
+      <p>Chaque mandataire commence au niveau 1. Ses transactions menées à terme le font monter, jusqu'à la certification à 1 000 transactions.</p>
+      <a class="btn btn--gold btn--lg" href="/mandataires">Voir les mandataires <%- icon('arrow-right', { size: 18 }) %></a>
+    </div>
+    <ol class="levels__chart" data-reveal data-reveal-stagger aria-label="Niveaux de plafond">
+      <% limitTiers.forEach((t) => { %>
+        <li class="lvl lvl--<%= t.level %> <%= t.certification ? 'lvl--cert' : '' %>">
+          <span class="lvl__limit"><%= t.label %></span>
+          <span class="lvl__bar" aria-hidden="true"><% if (t.certification) { %><%- certifiedBadge({ size: 22 }) %><% } %></span>
+          <span class="lvl__name">Niveau <%= t.level %></span>
+          <span class="lvl__from"><%= t.from === 0 ? 'Dès le début' : `${fmt.formatNumber(t.from)} trans.` %></span>
+        </li>
+      <% }) %>
+    </ol>
+  </div>
+</section>
+
+<!-- ======================================================================= Mandataires -->
+<section class="band band--mist" aria-labelledby="pros-title">
+  <div class="container">
+    <div class="band-head" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Mandataires</p>
+        <h2 id="pros-title">Des mandataires prêts à vous répondre</h2>
+        <p>Comptes proposés, plafond, avis et disponibilité en temps réel : tout est sur la fiche.</p>
+      </div>
+      <% if (featuredMandataires.length) { %>
+        <a class="link-arrow" href="/mandataires">Tous les mandataires <%- icon('arrow-right', { size: 18 }) %></a>
+      <% } %>
+    </div>
+
+    <% if (featuredMandataires.length) { %>
+      <div class="pro-grid home-rail" data-reveal data-reveal-stagger>
+        <% featuredMandataires.forEach((pro) => { %>
+          <%- include('../partials/mandataire-card', { pro, profileInPanel: true, publicMode: true }) %>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="card" data-reveal>
+        <%- include('../partials/empty-state', {
+          emptyIllustration: 'search',
+          emptyTitle: 'Les premiers mandataires arrivent bientôt',
+          emptyText: "Les profils apparaîtront ici dès qu'ils auront publié leurs comptes.",
+          emptyAction: { href: '/mandataire/inscription', label: 'Vous êtes mandataire ? Inscrivez-vous' }
+        }) %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- ======================================================================= Avis -->
+<section class="band band--white" aria-labelledby="reviews-title">
+  <div class="container">
+    <div class="band-head" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Avis clients</p>
+        <h2 id="reviews-title">Ils ont fait leur transaction</h2>
+        <p>Seuls les clients ayant mené une transaction à terme peuvent évaluer un mandataire.</p>
+      </div>
+    </div>
+
+    <% if (reviews.length) { %>
+      <div class="grid grid--3 home-rail" data-reveal data-reveal-stagger>
+        <% reviews.forEach((review) => { %>
+          <figure class="card testimonial">
+            <span class="testimonial__stars" role="img" aria-label="Note : <%= review.rating %> sur 5">
+              <% for (let i = 0; i < review.rating; i++) { %><%- icon('star', { size: 16 }) %><% } %>
+            </span>
+            <blockquote class="testimonial__quote"><p>« <%= review.comment %> »</p></blockquote>
+            <figcaption class="testimonial__author">
+              <%= review.author_display_name %>
+              <span class="testimonial__context">Transaction avec <%= review.mandataire_name %> · <%= fmt.formatDate(review.created_at) %></span>
+            </figcaption>
+          </figure>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="card" data-reveal>
+        <%- include('../partials/empty-state', {
+          emptyIllustration: 'reviews',
+          emptyTitle: 'Aucun avis publié pour le moment',
+          emptyText: "Les avis apparaîtront ici après les premières transactions. Nous ne publions aucun avis fictif.",
+          emptyAction: null
+        }) %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- ======================================================================= Professionnels -->
+<section class="band band--brume pro-band" aria-labelledby="pro-title">
+  <div class="container split">
+    <div class="split__media" data-reveal>
+      <%- include('../partials/photo', { slot: 'accueil-professionnel' }) %>
+    </div>
+    <div class="split__text" data-reveal>
+      <p class="kicker">Pour les mandataires</p>
+      <h2 id="pro-title">Vous avez des comptes PayPal, Wise, Western Union… ?</h2>
+      <p>Publiez vos comptes, recevez les demandes de clients du monde entier et suivez votre activité. Chaque transaction réussie vous fait monter de niveau.</p>
+      <ul class="pro-list">
+        <li><%- icon('circle-check', { size: 20 }) %> Vos comptes publiés dès leur ajout, dans le pays de votre choix</li>
+        <li><%- icon('circle-check', { size: 20 }) %> Une messagerie guidée, sans échanges improvisés</li>
+        <li><%- icon('circle-check', { size: 20 }) %> Des statistiques, des niveaux et la certification à 1 000 transactions</li>
+      </ul>
+      <a class="btn btn--gold btn--lg" href="/espace-mandataire">Devenir mandataire <%- icon('arrow-right', { size: 18 }) %></a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= FAQ -->
+<section class="band band--white" id="faq" aria-labelledby="faq-title">
+  <div class="container faq">
+    <div class="band-head" data-reveal>
+      <div class="band-head__text">
+        <p class="kicker">Questions fréquentes</p>
+        <h2 id="faq-title">Tout ce qu'il faut savoir</h2>
+        <p>Une autre question ? Consultez le <a href="/aide">centre d'aide</a>.</p>
+      </div>
+    </div>
+
+    <div class="accordion" data-reveal data-reveal-stagger>
+      <% faq.forEach((item, index) => { %>
+        <details class="accordion__item" <%= index === 0 ? 'open' : '' %>>
+          <summary class="accordion__summary"><%= item.question %> <%- icon('chevron-down', { size: 20 }) %></summary>
+          <div class="accordion__content"><p><%= item.answer %></p></div>
+        </details>
+      <% }) %>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,82 @@
+<%#
+  Fiche d'un mandataire (administration). Locaux : m, accounts (publiés : type, pays, devise, banque), accountTypes,
+  limitFor, certificationThreshold, typeName. Les coordonnées de réception ne sont pas affichées ici :
+  elles restent visibles du seul mandataire dans son espace.
+%>
+<%
+  const n = (v) => fmt.formatNumber(v);
+  const certified = m.transactions >= certificationThreshold;
+  const active = m.status === 'active';
+  const fullName = `${m.firstName} ${m.lastName}`;
+%>
+<nav aria-label="Fil d'Ariane" class="crumbs"><ol class="breadcrumb"><li><a href="/admin/mandataires">Mandataires</a></li><li aria-hidden="true">/</li><li aria-current="page"><%= fullName %></li></ol></nav>
+
+<section class="admin-hero">
+  <span class="admin-hero__avatar"><%- avatarSvg(m.avatar, { size: 80 }) %></span>
+  <div class="admin-hero__text">
+    <h1><%= fullName %><% if (certified) { %><%- certifiedBadge({ size: 26 }) %><% } %></h1>
+    <p class="admin-hero__meta"><%- flag(m.country, { size: 16 }) %> <%= m.countryName %> · inscrit le <%= fmt.formatDate(m.joined) %></p>
+    <%- include('../partials/status-badge', { group: 'account', value: m.status }) %>
+  </div>
+  <div class="admin-hero__actions">
+    <% if (active) { %>
+      <a class="btn btn--ghost-border" href="/mandataires/<%= m.slug %>"><%- icon('external-link', { size: 16 }) %> Fiche publique</a>
+      <form method="post" action="/admin/comptes/<%= m.userPublicId %>/suspendre" data-confirm="Le profil de <%= fullName %> ne sera plus visible des clients et ses conversations seront mises en pause." data-confirm-title="Suspendre ce mandataire ?" data-confirm-label="Suspendre" data-confirm-tone="danger">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="retour" value="/admin/mandataires/<%= m.slug %>">
+        <button class="btn btn--danger" type="submit"><%- icon('ban', { size: 16 }) %> Suspendre</button>
+      </form>
+    <% } else { %>
+      <form method="post" action="/admin/comptes/<%= m.userPublicId %>/reactiver" data-confirm="Le profil de <%= fullName %> sera de nouveau visible des clients." data-confirm-title="Réactiver ce mandataire ?" data-confirm-label="Réactiver">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="retour" value="/admin/mandataires/<%= m.slug %>">
+        <button class="btn btn--primary" type="submit"><%- icon('rotate-ccw', { size: 16 }) %> Réactiver</button>
+      </form>
+    <% } %>
+  </div>
+</section>
+
+<section class="stats-tiles" aria-label="Activité">
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('arrow-left-right', { size: 18 }) %></span>
+    <p class="stat-tile__label">Transactions</p>
+    <p class="stat-tile__value"><%= n(m.transactions) %></p>
+    <p class="stat-tile__hint"><%= certified ? 'Certification obtenue' : `Certification à ${n(certificationThreshold)}` %></p>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('gauge', { size: 18 }) %></span>
+    <p class="stat-tile__label">Plafond par transaction</p>
+    <p class="stat-tile__value"><%= limitFor(m.transactions) %></p>
+    <p class="stat-tile__hint">Niveau <%= levelFor(m.transactions) %> sur 7</p>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('star', { size: 18 }) %></span>
+    <p class="stat-tile__label">Note moyenne</p>
+    <p class="stat-tile__value"><%= m.rating ? m.rating.toFixed(1).replace('.', ',') : '—' %><% if (m.rating) { %><small> /5</small><% } %></p>
+    <p class="stat-tile__hint"><%= m.rating ? 'Avis des clients' : 'Pas encore d\'avis' %></p>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('wallet', { size: 18 }) %></span>
+    <p class="stat-tile__label">Comptes publiés</p>
+    <p class="stat-tile__value"><%= accounts.length %></p>
+    <p class="stat-tile__hint">Publiés dès leur ajout</p>
+  </article>
+</section>
+
+<section class="panel" aria-labelledby="acc-title">
+  <h2 class="stats-card__title" id="acc-title">Comptes publiés</h2>
+  <p class="stats-card__sub">Ce que les clients voient sur la fiche. Les coordonnées de réception restent privées.</p>
+  <% if (accounts.length) { %>
+    <ul class="admin-accounts">
+      <% accounts.forEach((a) => { %>
+        <li class="admin-account">
+          <span class="admin-account__logo"><%- serviceLogo(a.type, { size: 26 }) %></span>
+          <span class="admin-account__body">
+            <strong><%= typeName(a.type) %></strong>
+            <small><%- flag(a.country, { size: 14 }) %> <%= a.countryName %> · <%= a.currency %><% if (a.bank) { %> · <%= a.bank %><% } %></small>
+          </span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p class="text-muted">Aucun compte publié.</p>
+  <% } %>
+</section>

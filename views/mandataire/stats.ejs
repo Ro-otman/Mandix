@@ -1,0 +1,106 @@
+<%#
+  Statistiques du mandataire. Locaux : stats (services/statsService.js → mandataireStats), pro, tiers (utils/limits.js), limitText, tierLabel, certificationThreshold.
+  Règles de visualisation : un seul chiffre vedette, une seule teinte pour les barres (pas de légende pour
+  une série), grille fine, infobulle au survol et tableau des données ; statuts toujours avec icône et libellé.
+%>
+<%
+  const n = (v) => fmt.formatNumber(v);
+  const eur = (v) => fmt.formatEur(v);
+  // Indicateurs sans donnée (aucune transaction sur la période) : affichés « — » plutôt que 0 ou NaN.
+  const faster = stats.previous30.responseMinutes != null && stats.last30.responseMinutes != null ? stats.previous30.responseMinutes - stats.last30.responseMinutes : null;
+  const proofsTotal = stats.proofs.validated + stats.proofs.rejected + stats.proofs.pending;
+  const validationRate = proofsTotal ? Math.round((stats.proofs.validated / proofsTotal) * 100) : null;
+
+  // Courbe du chiffre vedette : mois complets uniquement (le mois en cours fausserait la tendance).
+  const spark = stats.monthlyVolumeEur.slice(0, -1);
+
+  const currentTier = tiers.reduce((found, t, i) => (pro.transactions >= t.from ? i : found), 0);
+  const certified = pro.transactions >= certificationThreshold;
+%>
+<div class="page-header">
+  <div>
+    <h1>Statistiques</h1>
+    <p>Votre activité sur <%= appName %> · 30 derniers jours, comparés aux 30 jours précédents.</p>
+  </div>
+</div>
+
+<section class="stats-kpis" aria-label="Indicateurs clés">
+  <article class="stat-hero">
+    <p class="stat-hero__label">Volume traité</p>
+    <p class="stat-hero__value"><%= eur(stats.last30.volumeEur) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.volumeEur, prev: stats.previous30.volumeEur, deltaSuffix: 'vs 30 jours précédents', deltaIcon: 16 }) %>
+    <%- include('../partials/dash/sparkline', { values: spark, sparkLabel: `Volume mensuel de décembre à octobre : de ${eur(Math.min(...spark))} à ${eur(Math.max(...spark))}`, sparkCaption: 'Volume mensuel · déc. à oct.' }) %>
+  </article>
+
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('arrow-left-right', { size: 18 }) %></span>
+    <p class="stat-tile__label">Transactions</p>
+    <p class="stat-tile__value"><%= n(stats.last30.transactions) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.transactions, prev: stats.previous30.transactions }) %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('users', { size: 18 }) %></span>
+    <p class="stat-tile__label">Clients servis</p>
+    <p class="stat-tile__value"><%= n(stats.last30.clients) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.clients, prev: stats.previous30.clients }) %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('timer', { size: 18 }) %></span>
+    <p class="stat-tile__label">Délai de réponse médian</p>
+    <p class="stat-tile__value"><%= stats.last30.responseMinutes != null ? stats.last30.responseMinutes + ' min' : '—' %></p>
+    <% if (faster != null) { %><p class="stat-delta <%= faster >= 0 ? 'is-up' : 'is-down' %>"><%- icon(faster >= 0 ? 'trending-down' : 'trending-up', { size: 14 }) %> <strong><%= Math.abs(faster) %> min</strong> <span><%= faster >= 0 ? 'plus rapide' : 'plus lent' %></span></p><% } else { %><p class="stat-tile__hint">Pas encore de donnée</p><% } %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('shield-check', { size: 18 }) %></span>
+    <p class="stat-tile__label">Preuves validées</p>
+    <p class="stat-tile__value"><%= validationRate != null ? validationRate + ' %' : '—' %></p>
+    <p class="stat-tile__hint"><%= n(stats.proofs.validated) %> sur <%= n(proofsTotal) %></p>
+  </article>
+</section>
+
+<div class="stats-row stats-row--wide">
+  <section class="panel">
+    <%- include('../partials/dash/bar-chart', { chartId: 'pro-transactions', chartTitle: 'Transactions par mois', chartSub: '12 derniers mois · novembre en cours', series: stats.monthly, chartFormat: 'number' }) %>
+  </section>
+
+  <section class="panel stats-limit" aria-labelledby="limit-title">
+    <h2 class="stats-card__title" id="limit-title">Plafond et certification</h2>
+    <p class="stats-limit__value"><%= limitText %> <span>par transaction · niveau <%= tiers[currentTier].level %></span></p>
+    <ol class="tier-list" aria-label="Niveaux de plafond selon le nombre de transactions">
+      <% tiers.forEach((t, i) => { const next = tiers[i + 1]; const state = i < currentTier ? 'done' : i === currentTier ? 'current' : 'next'; %>
+        <li class="tier tier--<%= state %>" <%- i === currentTier ? 'aria-current="step"' : '' %>>
+          <span class="tier__marker"><% if (state === 'next') { %><%= t.level %><% } else { %><%- icon('check', { size: 12, strokeWidth: 3 }) %><% } %></span>
+          <span class="tier__range"><strong>Niveau <%= t.level %></strong> · <%= t.from === 0 ? `dès l'inscription` : `${n(t.from)} transactions` %><% if (t.certification) { %> · certification<% } %></span>
+          <span class="tier__limit"><%= tierLabel(t) %></span>
+        </li>
+      <% }) %>
+    </ol>
+    <p class="stats-limit__cert <%= certified ? 'is-certified' : '' %>">
+      <%- icon('award', { size: 16 }) %>
+      <% if (certified) { %>Mandataire certifié · <%= n(pro.transactions) %> transactions<% } else { %>Certification à <%= n(certificationThreshold) %> transactions (<%= n(pro.transactions) %> aujourd'hui)<% } %>
+    </p>
+  </section>
+</div>
+
+<div class="stats-row">
+  <section class="panel" aria-labelledby="accounts-title">
+    <%- include('../partials/dash/account-volume', { rows: stats.byAccount, headingId: 'accounts-title' }) %>
+  </section>
+
+  <section class="panel" aria-labelledby="proofs-title">
+    <h2 class="stats-card__title" id="proofs-title">Décisions sur les preuves</h2>
+    <p class="stats-card__sub"><%= n(proofsTotal) %> preuve<%= proofsTotal > 1 ? "s" : "" %> reçue<%= proofsTotal > 1 ? "s" : "" %> au total</p>
+    <ul class="rank-list">
+      <% [['validated', 'Validé', 'circle-check'], ['rejected', 'Rejeté', 'circle-x'], ['pending', 'En attente', 'clock']].forEach(([key, label, ic]) => { const count = stats.proofs[key]; const share = proofsTotal ? Math.round((count / proofsTotal) * 100) : 0; %>
+        <li class="rank" title="<%= label %> : <%= n(count) %> (<%= share %> %)">
+          <span class="rank__name rank__name--status rank__name--<%= key %>"><%- icon(ic, { size: 17 }) %> <%= label %></span>
+          <span class="rank__bar" aria-hidden="true"><span data-progress="<%= Math.max(share, count ? 2 : 0) %>"></span></span>
+          <span class="rank__value"><strong><%= n(count) %></strong> <small><%= share %> %</small></span>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+</div>
+
+<%- include('../partials/dash/recent-transactions', { rows: stats.recent }) %>
+<script src="<%= asset('js/spaces.js') %>" defer></script>

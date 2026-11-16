@@ -1,0 +1,59 @@
+<%#
+  Graphique en colonnes, une seule série (une seule couleur, pas de légende : le titre nomme la mesure).
+  Locaux : chartId, chartTitle, chartSub, series [{ label, value }], chartFormat ('number' | 'xof').
+  Règles : colonnes ≤ 24 px, extrémité arrondie de 4 px posée sur la ligne de base, grille fine,
+  une seule valeur étiquetée (le maximum), infobulle au survol, tableau des données disponible.
+%>
+<%
+  const W = 640, H = 240, M = { top: 18, right: 8, bottom: 30, left: 52 };
+  const plotW = W - M.left - M.right, plotH = H - M.top - M.bottom;
+  const values = series.map((s) => s.value);
+  const rawMax = Math.max(...values, 1);
+  // Pas « propre » pour 4 graduations.
+  const rough = rawMax / 4, pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * pow).find((s) => s >= rough);
+  const yMax = Math.ceil(rawMax / step) * step;
+  const ticks = Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step);
+  const band = plotW / series.length, barW = Math.min(24, band * 0.55), r = 4;
+  const y = (v) => M.top + plotH - (v / yMax) * plotH;
+  const isXof = chartFormat === 'xof';
+  const full = (v) => isXof ? fmt.formatXof(v) : new Intl.NumberFormat('fr-FR').format(v);
+  const axis = (v) => v >= 10000 ? `${new Intl.NumberFormat('fr-FR').format(v / 1000)} k` : new Intl.NumberFormat('fr-FR').format(v);
+  // Série entièrement à zéro (aucune activité) : le premier mois sert de repère.
+  const maxIndex = Math.max(0, values.indexOf(Math.max(...values)));
+  const barPath = (x, top, w, base) => {
+    const h = base - top, rr = Math.min(r, h / 2, w / 2);
+    return `M${x},${base} V${top + rr} Q${x},${top} ${x + rr},${top} H${x + w - rr} Q${x + w},${top} ${x + w},${top + rr} V${base} Z`;
+  };
+%>
+<figure class="chart" id="<%= chartId %>" data-chart>
+  <figcaption class="chart__head">
+    <p class="chart__title"><%= chartTitle %></p>
+    <% if (typeof chartSub !== 'undefined' && chartSub) { %><p class="chart__sub"><%= chartSub %></p><% } %>
+  </figcaption>
+  <div class="chart__plot">
+    <svg viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="<%= chartTitle %> : valeur maximale <%= full(rawMax) %> en <%= series[maxIndex].label %>">
+      <% ticks.forEach((t) => { %>
+        <line class="chart__grid" x1="<%= M.left %>" x2="<%= W - M.right %>" y1="<%= y(t) %>" y2="<%= y(t) %>"/>
+        <text class="chart__tick" x="<%= M.left - 10 %>" y="<%= y(t) + 4 %>" text-anchor="end"><%= axis(t) %></text>
+      <% }) %>
+      <% series.forEach((s, i) => { const x = M.left + band * i + (band - barW) / 2; const top = y(s.value); %>
+        <g class="chart__bar" data-tip="<%= s.label %> : <%= full(s.value) %>">
+          <rect class="chart__hit" x="<%= M.left + band * i %>" y="<%= M.top %>" width="<%= band %>" height="<%= plotH %>"/>
+          <path class="chart__mark" d="<%= barPath(x, top, barW, M.top + plotH) %>"/>
+          <% if (i === maxIndex) { %><text class="chart__value" x="<%= x + barW / 2 %>" y="<%= top - 7 %>" text-anchor="middle"><%= axis(s.value) %></text><% } %>
+          <text class="chart__label" x="<%= x + barW / 2 %>" y="<%= H - 9 %>" text-anchor="middle"><%= s.label %></text>
+        </g>
+      <% }) %>
+      <line class="chart__baseline" x1="<%= M.left %>" x2="<%= W - M.right %>" y1="<%= M.top + plotH %>" y2="<%= M.top + plotH %>"/>
+    </svg>
+    <div class="chart__tip" role="status" hidden></div>
+  </div>
+  <details class="chart__table">
+    <summary>Voir les données</summary>
+    <table class="table">
+      <thead><tr><th scope="col">Mois</th><th scope="col"><%= isXof ? 'Montant' : 'Valeur' %></th></tr></thead>
+      <tbody><% series.forEach((s) => { %><tr><td><%= s.label %></td><td class="num"><%= full(s.value) %></td></tr><% }) %></tbody>
+    </table>
+  </details>
+</figure>

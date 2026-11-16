@@ -1,0 +1,20 @@
+<%#
+  En-tête HTML commun. Locaux : title, metaDescription, styles (feuilles additionnelles).
+%>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="<%= csrfToken %>">
+<title><%= typeof title !== 'undefined' && title ? `${title} | ${appName}` : `${appName} — Transactions entre comptes, guidées pas à pas` %></title>
+<meta name="description" content="<%= typeof description !== 'undefined' ? description : metaDescription %>">
+<meta name="theme-color" content="#0B1B3A">
+<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<%# Polices hébergées sur le site : les deux plus utilisées sont préchargées (texte et grands titres). %>
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="<%= asset('css/fonts.css') %>">
+<link rel="stylesheet" href="<%= asset('css/main.css') %>">
+<link rel="stylesheet" href="<%= asset('css/components.css') %>">
+<% (typeof styles !== 'undefined' ? styles : []).forEach((sheet) => { %>
+<link rel="stylesheet" href="<%= asset(`css/${sheet}.css`) %>">
+<% }) %>
+<script src="<%= asset('js/boot.js') %>"></script>

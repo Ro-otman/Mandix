@@ -1,0 +1,19 @@
+<%#
+  Inscription d'un mandataire : une seule étape (pseudo, e-mail, mot de passe et confirmation).
+  Le reste (présentation, langues, pays facultatif, comptes) se complète ensuite dans l'espace mandataire.
+  Locaux : errors, values, formError. Après l'envoi : page « Vérifiez votre boîte e-mail ».
+  Un client connecté voit le même formulaire : sa session est fermée une fois le compte mandataire créé.
+%>
+<div class="auth-card">
+  <h1 class="auth-title">Devenez <span class="auth-hl">mandataire</span></h1>
+
+  <%- include('../partials/form-alert', { formError }) %>
+
+  <form class="auth-form" method="post" action="/mandataire/inscription">
+    <%- include('_register-fields', { pseudoPlaceholder: 'Ex. Afiavi.H' }) %>
+
+    <button class="btn btn--gold btn--lg btn--block auth-submit" type="submit" data-busy-label="Création du compte…">
+      <%- icon('rocket', { size: 18 }) %> Créer mon compte mandataire
+    </button>
+  </form>
+</div>

@@ -1,0 +1,8 @@
+Polices hébergées par Mandix (public/fonts), utilisées par public/css/fonts.css.
+
+- Inter — Rasmus Andersson — SIL Open Font License 1.1
+- Manrope — Mikhail Sharanda — SIL Open Font License 1.1
+- Bricolage Grotesque — Mathieu Triay — SIL Open Font License 1.1
+
+Texte de la licence : https://openfontlicense.org/open-font-license-official-text/
+Fichiers obtenus depuis Google Fonts (jeux de caractères latin et latin étendu, fichiers variables).

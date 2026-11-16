@@ -1,0 +1,64 @@
+<%# Centre d'aide et contact. Local : helpTopics [{ id, title, icon, items: [{ question, answer }] }]. %>
+<section class="help-hero">
+  <div class="container help-hero__inner">
+    <h1 data-hero-item>Comment pouvons-nous vous aider ?</h1>
+    <p data-hero-item>Trouvez une réponse en quelques secondes, ou écrivez-nous.</p>
+    <div class="help-search" data-hero-item>
+      <%- icon('search', { size: 20 }) %>
+      <label class="visually-hidden" for="help-q">Rechercher dans l'aide</label>
+      <input class="input" id="help-q" type="search" placeholder="Ex. paiement en attente, preuve refusée, niveau…" data-help-search autocomplete="off">
+    </div>
+    <div class="help-topics" data-hero-item>
+      <% helpTopics.forEach((t) => { %><a class="help-topic" href="#<%= t.id %>"><%- icon(t.icon, { size: 18 }) %> <%= t.title %></a><% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="band band--white">
+  <div class="container help-layout">
+    <div class="help-faq">
+      <% helpTopics.forEach((t) => { %>
+        <section class="help-group" id="<%= t.id %>" data-help-group>
+          <h2 class="help-group__title"><span class="help-group__icon"><%- icon(t.icon, { size: 20 }) %></span> <%= t.title %></h2>
+          <div class="accordion">
+            <% t.items.forEach((item) => { %>
+              <details class="accordion__item" data-help-item>
+                <summary class="accordion__summary"><%= item.question %> <%- icon('chevron-down', { size: 20 }) %></summary>
+                <div class="accordion__content"><p><%= item.answer %></p></div>
+              </details>
+            <% }) %>
+          </div>
+        </section>
+      <% }) %>
+      <div class="help-empty" data-help-empty hidden>
+        <img src="/images/empty-search.svg" alt="" width="120" height="105">
+        <p><strong>Aucune réponse ne correspond à votre recherche.</strong></p>
+        <p class="text-muted">Écrivez-nous avec le formulaire, nous vous répondrons par e-mail.</p>
+      </div>
+    </div>
+
+    <aside class="help-contact" id="contact">
+      <form class="panel-like form-panel" data-demo-form="Votre message n'a pas été envoyé (fonction disponible une fois le backend branché).">
+        <h2 class="help-contact__title"><%- icon(contactSubject === 'signalement' ? 'flag' : 'message-circle', { size: 22 }) %> <%= contactSubject === 'signalement' ? 'Signaler un mandataire' : 'Nous écrire' %></h2>
+        <div class="field"><label class="field__label" for="c-pseudo">Pseudo</label><input class="input" id="c-pseudo" name="pseudo" autocomplete="nickname" maxlength="40" required></div>
+        <div class="field"><label class="field__label" for="c-email">Adresse e-mail</label><input class="input" id="c-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label class="field__label" for="c-subject">Sujet</label><select class="select" id="c-subject" name="subject" required><option value="">Choisir…</option><% contactSubjects.forEach(([key, label]) => { %><option value="<%= key %>" <%= key === contactSubject ? 'selected' : '' %>><%= label %></option><% }) %></select></div>
+        <% if (reported) { %>
+          <div class="field help-reported">
+            <p class="field__label">Mandataire signalé</p>
+            <p class="help-reported__name"><%- icon('flag', { size: 15 }) %> <%= reported.name %></p>
+            <input type="hidden" name="mandataire" value="<%= reported.slug %>">
+          </div>
+        <% } %>
+        <div class="field"><label class="field__label" for="c-msg">Message</label><textarea class="textarea" id="c-msg" name="message" required placeholder="<%= contactSubject === 'signalement' ? 'Décrivez ce qui s\'est passé (date, compte concerné…).' : '' %>"></textarea></div>
+        <button class="btn btn--primary btn--block" type="submit"><%- icon('send', { size: 17 }) %> Envoyer</button>
+      </form>
+      <div class="contact-info">
+        <p><%- icon('mail', { size: 16 }) %> <span>support@mandix.bj <span class="text-muted">(adresse provisoire)</span></span></p>
+        <p><%- icon('clock-3', { size: 16 }) %> <span>Du lundi au vendredi, 8 h – 18 h</span></p>
+        <p><%- icon('globe', { size: 16 }) %> <span>Service disponible dans de nombreux pays</span></p>
+      </div>
+    </aside>
+  </div>
+</section>
+<script src="<%= asset('js/help.js') %>" defer></script>

@@ -1,0 +1,53 @@
+<%#
+  Champs communs aux deux inscriptions (client et mandataire) : pseudo, e-mail, mot de passe, confirmation,
+  conditions. Locaux : errors, values, pseudoPlaceholder. Le mot de passe n'est jamais réaffiché.
+%>
+<% const err = (k) => errors && errors[k]; const describe = (k, extra) => { const ids = [extra, err(k) ? `${k}-error` : null].filter(Boolean).join(' '); return ids ? `aria-describedby="${ids}"` : ''; }; %>
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+<div class="field">
+  <label class="field__label" for="pseudo">Pseudo</label>
+  <div class="input-group">
+    <%- icon('at-sign', { size: 18 }) %>
+    <input class="input" id="pseudo" name="pseudo" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9._\-]{3,20}"
+           placeholder="<%= pseudoPlaceholder %>" value="<%= values.pseudo || '' %>" <%- err('pseudo') ? 'aria-invalid="true"' : '' %> <%- describe('pseudo') %>>
+  </div>
+  <%- include('../partials/field-error', { id: 'pseudo-error', message: err('pseudo') }) %>
+</div>
+
+<div class="field">
+  <label class="field__label" for="email">Adresse e-mail</label>
+  <div class="input-group">
+    <%- icon('mail', { size: 18 }) %>
+    <input class="input" id="email" name="email" type="email" autocomplete="email" required maxlength="191" placeholder="vous@exemple.com"
+           value="<%= values.email || '' %>" <%- err('email') ? 'aria-invalid="true"' : '' %> <%- describe('email') %>>
+  </div>
+  <%- include('../partials/field-error', { id: 'email-error', message: err('email') }) %>
+</div>
+
+<div class="field">
+  <label class="field__label" for="password">Mot de passe</label>
+  <div class="input-group input-group--action">
+    <%- icon('lock', { size: 18 }) %>
+    <input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required data-strength
+           <%- err('password') ? 'aria-invalid="true"' : '' %> <%- describe('password', 'strength-text') %>>
+    <button class="input-action" type="button" data-password-toggle="password" aria-label="Afficher le mot de passe" aria-pressed="false"><%- icon('eye', { size: 18 }) %></button>
+  </div>
+  <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <p class="field__hint" id="strength-text" data-strength-text>10 caractères minimum, avec au moins une lettre et un chiffre.</p>
+  <%- include('../partials/field-error', { id: 'password-error', message: err('password') }) %>
+</div>
+
+<div class="field">
+  <label class="field__label" for="password-confirm">Retapez le mot de passe</label>
+  <div class="input-group input-group--action">
+    <%- icon('lock-keyhole', { size: 18 }) %>
+    <input class="input" id="password-confirm" name="passwordConfirm" type="password" autocomplete="new-password" required maxlength="128" data-password-confirm="password"
+           <%- err('passwordConfirm') ? 'aria-invalid="true"' : '' %> aria-describedby="password-confirm-error">
+    <button class="input-action" type="button" data-password-toggle="password-confirm" aria-label="Afficher le mot de passe" aria-pressed="false"><%- icon('eye', { size: 18 }) %></button>
+  </div>
+  <p class="field__error" id="password-confirm-error" data-password-confirm-error <%= err('passwordConfirm') ? '' : 'hidden' %>><%= err('passwordConfirm') || 'Les deux mots de passe ne correspondent pas.' %></p>
+</div>
+
+<label class="checkbox"><input type="checkbox" name="terms" required <%- err('terms') ? 'aria-invalid="true" aria-describedby="terms-error"' : '' %>> <span>J'accepte les <a href="/conditions-utilisation">conditions d'utilisation</a> et la <a href="/confidentialite">politique de confidentialité</a>.</span></label>
+<%- include('../partials/field-error', { id: 'terms-error', message: err('terms') }) %>

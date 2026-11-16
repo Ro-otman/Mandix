@@ -1,0 +1,4 @@
+<%# Fragment chargé dans le panneau latéral (public/js/drawer.js) : liste des conversations. Local : list. %>
+<div class="drawer-view drawer-view--messages" data-drawer-view="messages" data-chat-role="client">
+  <%- include('../partials/dash/chat-list', { list, inPanel: true, searchId: 'panel-chat-search', pageHref: '/client/messages' }) %>
+</div>

@@ -1,0 +1,88 @@
+<%#
+  Vue d'ensemble de l'administration : activité de la plateforme (transactions des conversations guidées).
+  Locaux : stats, series, byAccount, recent, top (mandataires les plus actifs), limitFor, certificationThreshold.
+%>
+<%
+  const n = (v) => fmt.formatNumber(v);
+  const eur = (v) => fmt.formatEur(v);
+  const spark = series.volumeEur.slice(0, -1); // mois complets uniquement
+%>
+<div class="page-header">
+  <div>
+    <h1>Vue d'ensemble</h1>
+    <p>Activité de <%= appName %> · 30 derniers jours, comparés aux 30 jours précédents.</p>
+  </div>
+</div>
+
+<section class="stats-kpis" aria-label="Indicateurs clés">
+  <article class="stat-hero">
+    <p class="stat-hero__label">Volume traité sur la plateforme</p>
+    <p class="stat-hero__value"><%= eur(stats.last30.volumeEur) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.volumeEur, prev: stats.previous30.volumeEur, deltaSuffix: 'vs 30 jours précédents', deltaIcon: 16 }) %>
+    <%- include('../partials/dash/sparkline', { values: spark, sparkLabel: `Volume mensuel de décembre à octobre : de ${eur(Math.min(...spark))} à ${eur(Math.max(...spark))}`, sparkCaption: 'Volume mensuel · déc. à oct.' }) %>
+  </article>
+
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('arrow-left-right', { size: 18 }) %></span>
+    <p class="stat-tile__label">Transactions</p>
+    <p class="stat-tile__value"><%= n(stats.last30.transactions) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.transactions, prev: stats.previous30.transactions }) %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('user-plus', { size: 18 }) %></span>
+    <p class="stat-tile__label">Nouveaux clients</p>
+    <p class="stat-tile__value"><%= n(stats.last30.newClients) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.newClients, prev: stats.previous30.newClients, deltaSuffix: `${n(stats.clients)} au total` }) %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('user-check', { size: 18 }) %></span>
+    <p class="stat-tile__label">Mandataires actifs</p>
+    <p class="stat-tile__value"><%= n(stats.last30.activeMandataires) %></p>
+    <%- include('../partials/dash/stat-delta', { cur: stats.last30.activeMandataires, prev: stats.previous30.activeMandataires, deltaSuffix: `sur ${n(stats.mandataires)}` }) %>
+  </article>
+  <article class="stat-tile">
+    <span class="stat-tile__icon"><%- icon('message-circle', { size: 18 }) %></span>
+    <p class="stat-tile__label">Conversations actives</p>
+    <p class="stat-tile__value"><%= n(stats.conversationsActive) %></p>
+    <p class="stat-tile__hint"><%= n(stats.countries) %> pays représentés</p>
+  </article>
+</section>
+
+<div class="stats-row stats-row--wide">
+  <section class="panel">
+    <%- include('../partials/dash/bar-chart', { chartId: 'admin-transactions', chartTitle: 'Transactions par mois', chartSub: '12 derniers mois · novembre en cours', series: series.transactions, chartFormat: 'number' }) %>
+  </section>
+
+  <section class="panel" aria-labelledby="top-title">
+    <h2 class="stats-card__title" id="top-title">Mandataires les plus actifs</h2>
+    <p class="stats-card__sub">Transactions menées à terme depuis l'inscription</p>
+    <ol class="top-list">
+      <% top.forEach((m, i) => { const certified = m.transactions >= certificationThreshold; %>
+        <li>
+          <a class="top-item" href="/admin/mandataires/<%= m.slug %>">
+            <span class="top-item__rank"><%= i + 1 %></span>
+            <span class="mini-avatar"><%- avatarSvg(m.avatar, { size: 36 }) %></span>
+            <span class="top-item__body">
+              <strong class="cell-name"><%= m.firstName %> <%= m.lastName %><% if (certified) { %><%- certifiedBadge({ size: 15 }) %><% } %></strong>
+              <small><%- flag(m.country, { size: 14 }) %> <%= m.countryName %></small>
+            </span>
+            <span class="top-item__value"><strong><%= n(m.transactions) %></strong><small>trans.</small></span>
+          </a>
+        </li>
+      <% }) %>
+    </ol>
+    <a class="link-more" href="/admin/mandataires">Tous les mandataires <%- icon('arrow-right', { size: 15 }) %></a>
+  </section>
+</div>
+
+<div class="stats-row">
+  <section class="panel" aria-labelledby="accounts-title">
+    <%- include('../partials/dash/account-volume', { rows: byAccount, headingId: 'accounts-title' }) %>
+  </section>
+  <section class="panel">
+    <%- include('../partials/dash/bar-chart', { chartId: 'admin-signups', chartTitle: 'Nouvelles inscriptions par mois', chartSub: 'Clients et mandataires · novembre en cours', series: series.signups, chartFormat: 'number' }) %>
+  </section>
+</div>
+
+<%- include('../partials/dash/recent-transactions', { rows: recent, showPro: true }) %>
+<script src="<%= asset('js/spaces.js') %>" defer></script>

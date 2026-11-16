@@ -1,0 +1,19 @@
+<%#
+  Messagerie (client ↔ mandataire). Locaux : chat { list, thread }, chatRole ('client' | 'mandataire'),
+  openedFromList (sur mobile : afficher la liste plutôt que la conversation), basePath.
+  Les messages ne doivent jamais contenir de données bancaires sensibles : public/js/chat.js bloque
+  l'envoi d'un numéro de carte ou d'un IBAN.
+%>
+<% const t = chat.thread; %>
+<div class="chat <%= openedFromList ? 'chat--list-first' : 'chat--thread-first' %>" data-chat-role="<%= chatRole %>">
+  <%- include('chat-list', { list: chat.list }) %>
+
+  <% if (t) { %>
+    <%- include('chat-thread', { t, chatRole, basePath }) %>
+  <% } else { %>
+    <section class="chat__thread chat__thread--empty">
+      <%- include('../empty-state', { emptyIllustration: 'search', emptyTitle: 'Aucune conversation', emptyText: chatRole === 'client' ? 'Trouvez un mandataire et envoyez-lui votre premier message.' : 'Les messages de vos clients apparaîtront ici.', emptyAction: chatRole === 'client' ? { href: '/client/dashboard', label: 'Trouver un mandataire' } : null }) %>
+    </section>
+  <% } %>
+</div>
+<script src="<%= asset('js/chat.js') %>" defer></script>
