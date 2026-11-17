@@ -119,7 +119,11 @@ export function createRealtime(httpServer) {
       const { role } = await messaging.participation(user, conversation, context.mandataire);
       socket.join(`conv:${conversation.public_id}`);
       // Messages et accusé de lecture de l'autre participant (resynchronisés après une coupure réseau).
-      return { events: await ConversationEvent.list(conversation.id), otherReadAt: messaging.otherReadAt(conversation, role) };
+      return {
+        events: await ConversationEvent.list(conversation.id),
+        otherReadAt: messaging.otherReadAt(conversation, role),
+        reviewed: role === "client" ? await messaging.reviewedRequestIds(conversation.id) : [], // transactions déjà évaluées
+      };
     });
 
     on("message:send", async ({ conversationId, mandataireSlug, type, data }) => {

@@ -240,6 +240,7 @@
     // Accusés de lecture : dernière lecture de la conversation par l'autre participant (temps réel uniquement).
     var otherReadAt = flow.otherReadAt ? Date.parse(flow.otherReadAt) : 0;
     var rejecting = false; // le mandataire prépare un rejet : preuve du rejet à joindre
+    var resync = null; // temps réel : recharge les messages et l'état de la conversation depuis le serveur
     var payoutDraft = {}; // moyen de réception en cours de saisie (pays, moyen, champs), gardé entre deux affichages
     var pendingAppreciation = null;
     var uid = flow.key.replace(/[^a-z0-9]/gi, "") + Math.random().toString(36).slice(2, 6);
@@ -1218,6 +1219,7 @@
           }).catch(function (error) {
             if (MC.setBusy) MC.setBusy(submit, false);
             toast(error.message, "danger");
+            if (resync) resync(); // transaction déjà close (autre onglet…) : l'état réel du serveur est rechargé
           });
           return;
         }
@@ -1411,9 +1413,11 @@
         if (!flow.conversationId || !root.isConnected) return;
         MC.realtime.request("conversation:join", { conversationId: flow.conversationId }).then(function (reply) {
           if (reply.otherReadAt) otherReadAt = Math.max(otherReadAt, Date.parse(reply.otherReadAt));
+          if (Array.isArray(reply.reviewed)) flow.reviewed = reply.reviewed;
           if (reply.events) { events = reply.events; render(); }
         }).catch(function () {});
       };
+      resync = join;
       join();
       MC.realtime.onReconnect(join);
       var onMessage = function (payload) {

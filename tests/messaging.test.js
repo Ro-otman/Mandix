@@ -656,3 +656,20 @@ test("fichier perdu (ancien déploiement) : « introuvable », jamais une erreur
   assert.equal(res.status, 404);
   await db.execute("DELETE FROM attachments WHERE id = ?", [r.insertId]);
 });
+
+test("transaction rejetée et évaluée : plus de formulaire d'évaluation au rechargement (client non bloqué)", async () => {
+  const [[last]] = await db.query("SELECT t.id, t.status FROM transactions t JOIN reviews r ON r.transaction_id = t.id ORDER BY t.id DESC LIMIT 1");
+  assert.equal(last.status, "rejected", "dernière transaction : rejetée puis évaluée");
+  const [[asked]] = await db.query("SELECT id FROM conversation_events WHERE transaction_id = ? AND event_type = 'request'", [last.id]);
+  // Rechargement de la page : la demande figure parmi les transactions évaluées
+  const page = await http(clientJar, "GET", "/client/messages/afipro");
+  const flow = JSON.parse(page.text.match(/data-chat-flow>([\s\S]*?)<\/script>/)[1]);
+  assert.ok(flow.reviewed.includes(String(asked.id)), "transaction rejetée reconnue comme évaluée");
+  // Même information à la reconnexion temps réel
+  const tab = await connect(clientJar, { auth: { space: "client" } });
+  const joined = await request(tab, "conversation:join", { conversationId });
+  assert.ok(joined.reviewed.includes(String(asked.id)));
+  // Le client peut ouvrir une nouvelle transaction
+  const opened = await request(tab, "message:send", { conversationId, type: "request", data: { accountId } });
+  assert.ok(opened.ok, opened.error);
+});

@@ -596,10 +596,14 @@ function accountForFlow(account, withReceive) {
 }
 
 /** Demandes déjà évaluées (transactions terminées) dont le message de demande est encore visible. */
-async function reviewedRequestIds(conversationId) {
+/**
+ * Demandes dont la transaction est déjà évaluée, réussie OU rejetée : le panneau n'affiche plus le formulaire
+ * d'évaluation (sinon le client, après un rechargement, restait bloqué sur une évaluation refusée).
+ */
+export async function reviewedRequestIds(conversationId) {
   const [rows] = await pool.execute(
-    `SELECT e.id FROM conversation_events e JOIN transactions t ON t.id = e.transaction_id
-      WHERE e.conversation_id = ? AND e.event_type = 'request' AND t.status = 'completed'`,
+    `SELECT e.id FROM conversation_events e JOIN reviews r ON r.transaction_id = e.transaction_id
+      WHERE e.conversation_id = ? AND e.event_type = 'request'`,
     [conversationId],
   );
   return rows.map((r) => String(r.id));
