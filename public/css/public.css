@@ -441,6 +441,12 @@
 
   .navbar__toggle {
     display: grid;
+    margin-left: 0;
+  }
+
+  /* Mode jour / nuit : à droite, juste à côté du bouton menu */
+  .navbar .theme-toggle {
+    margin-left: auto;
   }
 }
 

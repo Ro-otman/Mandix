@@ -67,6 +67,7 @@
   /* Typographie : Manrope (titres, chiffres) + Inter (texte) */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-brand: "Fredoka", "Manrope", system-ui, sans-serif; /* nom de la marque, à côté du logo */
   /* Grands titres (h1, h2) : professionnelle avec une touche ludique */
   --font-headline: "Bricolage Grotesque", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   --text-xs: 0.75rem;

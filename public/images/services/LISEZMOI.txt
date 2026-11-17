@@ -1,8 +1,13 @@
-Logos des moyens proposés par les mandataires.
+Logos des moyens proposés par les mandataires (24 × 24, affichés en petit : pastilles, puces, listes).
 
 - paypal, stripe, wise, westernunion, moneygram, pcs (Mastercard), crypto (Bitcoin) :
-  tracés de Simple Icons (https://simpleicons.org, licence CC0). Les marques restent la propriété
-  de leurs détenteurs ; leur usage doit respecter les chartes de chaque marque.
-- transcash, neosurf, paysafecard, wero, skrill : pastilles provisoires (initiales), absentes de Simple Icons.
-  Remplacez chaque fichier par le logo officiel fourni dans le kit presse de la marque (même nom de fichier).
+  tracés de Simple Icons (https://simpleicons.org, licence CC0).
+- paysafecard, skrill : symbole du groupe Paysafe (losange + triangle) extrait du logo officiel Paysafecard 2024
+  (Wikimedia Commons), sur la couleur de chaque marque, comme leurs icônes officielles (bleu #0036C2, violet #910590).
+- wero : mot « wero » officiel (Wikimedia Commons) sur le jaune Wero #FFF48D, comme l'icône officielle.
+- transcash, neosurf : redessinés en vectoriel d'après leurs icônes officielles (« tc » anthracite #3B3F4A et
+  rouge #D60E1F ; « N » rose #EE358D).
 - virement : icône « landmark » de Lucide (licence ISC).
+
+Mandix n'est affilié à aucun de ces services. Les marques restent la propriété de leurs détenteurs ;
+leur usage doit respecter les chartes de chaque marque.

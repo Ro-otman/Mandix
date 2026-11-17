@@ -28,6 +28,15 @@
   height: 36px;
 }
 
+/* Nom de la marque : écriture arrondie (comme les traits du logo), nette et un peu fantaisiste. */
+.brand__name {
+  font-family: var(--font-brand);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.005em;
+}
+
 .brand__accent {
   color: var(--color-accent);
 }
