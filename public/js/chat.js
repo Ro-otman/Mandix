@@ -237,6 +237,8 @@
     var pendingProof = null;
     var pendingRating = 0;
     var pendingFiles = [];
+    // Accusés de lecture : dernière lecture de la conversation par l'autre participant (temps réel uniquement).
+    var otherReadAt = flow.otherReadAt ? Date.parse(flow.otherReadAt) : 0;
     var rejecting = false; // le mandataire prépare un rejet : preuve du rejet à joindre
     var payoutDraft = {}; // moyen de réception en cours de saisie (pays, moyen, champs), gardé entre deux affichages
     var pendingAppreciation = null;
@@ -389,8 +391,15 @@
       var wrap = el("span", "msg__attachment");
       if (d.preview) {
         var img = el("img", "msg__proof-image");
-        img.src = fileUrl(d.preview);
         img.alt = label + " : " + (d.name || "image");
+        // Fichier qui n'est plus disponible (supprimé, ou perdu) : une mention claire plutôt qu'une image cassée.
+        img.addEventListener("error", function () {
+          var gone = el("span", "msg__file msg__file--gone");
+          gone.innerHTML = svg(ICON.file, 18);
+          gone.appendChild(el("span", "msg__file-name", "Image indisponible"));
+          if (img.parentNode) img.parentNode.replaceChild(gone, img);
+        }, { once: true });
+        img.src = fileUrl(d.preview);
         wrap.appendChild(img);
       } else if (d.name) {
         var fileChip = el(d.url ? "a" : "span", "msg__file");
@@ -491,6 +500,18 @@
       return note;
     }
 
+    /** Un trait : envoyé. Deux traits colorés : lu par l'autre participant. */
+    function paintTicks(ticks) {
+      var read = socketMode && otherReadAt > 0 && otherReadAt >= Date.parse(ticks.getAttribute("data-at"));
+      if (ticks.getAttribute("data-read") === String(read)) return;
+      ticks.setAttribute("data-read", String(read));
+      ticks.classList.toggle("is-read", read);
+      ticks.setAttribute("role", "img");
+      ticks.setAttribute("aria-label", read ? "Lu" : "Envoyé");
+      ticks.title = read ? "Lu" : "Envoyé";
+      ticks.innerHTML = svg(read ? ICON.read : ICON.check, 15);
+    }
+
     function renderMessages() {
       box.textContent = "";
       box.appendChild(securityNotice());
@@ -518,7 +539,12 @@
         var msg = el("div", "msg msg--" + (e.from === "system" ? "system" : mine ? "me" : "them") + " msg--" + e.type);
         msg.appendChild(bubbleFor(e));
         var meta = el("span", "msg__meta", timeFmt.format(date));
-        if (mine) meta.insertAdjacentHTML("beforeend", " " + svg(ICON.read, 14));
+        if (mine) {
+          var ticks = el("span", "msg__ticks");
+          ticks.setAttribute("data-at", e.at);
+          paintTicks(ticks);
+          meta.appendChild(ticks);
+        }
         msg.appendChild(meta);
         box.appendChild(msg);
       });
@@ -1384,6 +1410,7 @@
       var join = function () {
         if (!flow.conversationId || !root.isConnected) return;
         MC.realtime.request("conversation:join", { conversationId: flow.conversationId }).then(function (reply) {
+          if (reply.otherReadAt) otherReadAt = Math.max(otherReadAt, Date.parse(reply.otherReadAt));
           if (reply.events) { events = reply.events; render(); }
         }).catch(function () {});
       };
@@ -1399,6 +1426,14 @@
         }
       };
       MC.realtime.socket.on("message:new", onMessage);
+      // L'autre participant a lu la conversation : mes messages passent à deux traits, sans redessiner le reste.
+      var onSeen = function (payload) {
+        if (!root.isConnected) { MC.realtime.socket.off("conversation:seen", onSeen); return; }
+        if (!payload || payload.conversationId !== flow.conversationId || payload.role === role) return;
+        otherReadAt = Math.max(otherReadAt, Date.parse(payload.at) || 0);
+        box.querySelectorAll(".msg__ticks").forEach(paintTicks);
+      };
+      MC.realtime.socket.on("conversation:seen", onSeen);
     }
 
     // Autre onglet (l'autre partie, en démonstration) : la conversation se met à jour en direct.

@@ -60,9 +60,12 @@ export const Conversation = {
   async touch(conversationId, connection = pool) {
     await connection.execute("UPDATE conversations SET last_event_at = UTC_TIMESTAMP(3) WHERE id = ?", [conversationId]);
   },
+  /** Conversation lue par `role` maintenant (horloge de la base, comme la date des messages) ; renvoie cette date. */
   async markRead(conversationId, role) {
     const column = role === "client" ? "client_read_at" : "mandataire_read_at";
     await pool.execute(`UPDATE conversations SET ${column} = UTC_TIMESTAMP(3) WHERE id = ?`, [conversationId]);
+    const [[row]] = await pool.execute(`SELECT ${column} AS readAt FROM conversations WHERE id = ?`, [conversationId]);
+    return row?.readAt ? new Date(row.readAt) : null;
   },
   /** Nombre de messages non lus par conversation, pour un rôle. */
   async unreadCounts(conversationIds, role) {

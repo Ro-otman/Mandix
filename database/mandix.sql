@@ -372,6 +372,15 @@ CREATE TABLE IF NOT EXISTS attachments (
   CONSTRAINT chk_attachments_decision CHECK (kind = 'payment_proof' OR decision IS NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Contenu des fichiers joints, chiffré par l'application (AES-256-GCM) : conservé dans la base, car le dossier de
+-- l'application est recréé à chaque déploiement. Effacé avec les messages (10 jours après la clôture).
+CREATE TABLE IF NOT EXISTS attachment_blobs (
+  storage_key  VARCHAR(100) NOT NULL COMMENT 'Même clé que attachments.storage_key',
+  content      MEDIUMBLOB   NOT NULL COMMENT 'Contenu chiffré (5 Mo au plus avant chiffrement)',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (storage_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Demande de vérification : le client conteste les preuves de non-crédit du mandataire. L'équipe Mandix
 -- (espace admin, « Vérifications ») examine les captures et tranche ; le client reçoit une notification
 -- (type verification.result) et un message « Équipe Mandix » dans la conversation.

@@ -52,6 +52,22 @@ async function syncRead(userId, conversationPublicId) {
   await pushBadges(userId);
 }
 
+/**
+ * Conversation lue par `role` : compteurs des onglets du lecteur, et accusé de lecture envoyé en direct à l'autre
+ * participant (ses messages passent à deux traits « Lu »).
+ */
+async function markSeen(conversation, role, userId) {
+  const at = await Conversation.markRead(conversation.id, role);
+  await syncRead(userId, conversation.public_id);
+  if (at) hub.toConversation(conversation.public_id, "conversation:seen", { conversationId: conversation.public_id, role, at: at.toISOString() });
+}
+
+/** Dernière lecture de la conversation par l'autre participant (accusés de lecture), au format ISO. */
+export const otherReadAt = (conversation, role) => {
+  const value = role === "client" ? conversation?.mandataire_read_at : conversation?.client_read_at;
+  return value ? new Date(value).toISOString() : null;
+};
+
 const DAY_MS = 24 * 3600 * 1000;
 
 export class MessagingError extends Error {
@@ -542,7 +558,15 @@ export async function readAttachment(user, attachmentId, { mandataire = null } =
     const conversation = await Conversation.findByPublicId(convRows[0]?.public_id);
     await participation(user, conversation, mandataire);
   }
-  return { buffer: await files.readFile(row.storage_key), mime: row.mime_type, name: row.original_name };
+  let buffer;
+  try {
+    buffer = await files.readFile(row.storage_key);
+  } catch (error) {
+    // Fichier enregistré sur le disque avant la migration 015 et perdu lors d'un déploiement.
+    if (error.code === "ENOENT") fail("Ce fichier n'est plus disponible.", 404);
+    throw error;
+  }
+  return { buffer, mime: row.mime_type, name: row.original_name };
 }
 
 /* ------------------------------------------------------------------ Lecture des conversations (pages) */
@@ -623,10 +647,7 @@ export async function chatView(user, { active = null, mandataire = null, basePat
     const events = conversation ? await ConversationEvent.list(conversation.id) : [];
     const limitEur = limitForTransactions(transactions);
     const otherName = role === "client" ? (conversation?.mandataire_pseudo ?? target.pseudo) : conversation.client_pseudo;
-    if (conversation) {
-      await Conversation.markRead(conversation.id, role);
-      await syncRead(user.id, conversation.public_id);
-    }
+    if (conversation) await markSeen(conversation, role, user.id);
     thread = {
       id: active,
       name: otherName,
@@ -653,6 +674,7 @@ export async function chatView(user, { active = null, mandataire = null, basePat
         verificationHours: VERIFICATION_HOURS,
         sanctionDays: SANCTION_DAYS,
         events,
+        otherReadAt: otherReadAt(conversation, role), // accusés de lecture : mes messages lus par l'autre
         reviewed: conversation && role === "client" ? await reviewedRequestIds(conversation.id) : [],
         retentionDays: config.messages.retentionDays,
       },
@@ -666,8 +688,7 @@ export async function chatView(user, { active = null, mandataire = null, basePat
 export async function markRead(user, conversationId, { mandataire = null } = {}) {
   const conversation = await Conversation.findByPublicId(conversationId);
   const { role } = await participation(user, conversation, mandataire);
-  await Conversation.markRead(conversation.id, role);
-  await syncRead(user.id, conversation.public_id);
+  await markSeen(conversation, role, user.id);
 }
 
 /* ------------------------------------------------------------------ Ménage : messages éphémères */

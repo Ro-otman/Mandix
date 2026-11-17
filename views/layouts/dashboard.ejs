@@ -64,6 +64,7 @@
               <span class="topbar__dot" data-live-dot="notifications" aria-hidden="true" <%= typeof menuBadges !== 'undefined' && menuBadges.notifications ? '' : 'hidden' %>></span>
             </a>
             <% } %>
+            <% if (hasDrawer) { %><%- include('../partials/sound-toggle') %><% } %>
             <%- include('../partials/theme-toggle') %>
             <div class="topbar__user">
               <span class="avatar avatar--sm topbar__avatar" aria-hidden="true"><%- currentUser.avatarSvg || currentUser.initials %></span>
@@ -87,6 +88,7 @@
   <% if (currentUser) { %>
     <%# Temps réel : messagerie et notifications (socket.io servi localement) %>
     <script src="/vendor/socket.io/socket.io.min.js" defer></script>
+    <% if (hasDrawer) { %><script src="<%= asset('js/sound.js') %>" defer></script><% } %>
     <script src="<%= asset('js/realtime.js') %>" defer></script>
   <% } %>
   <% if (hasDrawer) { %>

@@ -299,8 +299,11 @@ test("parcours guidé complet, validé par le serveur, diffusé en direct", asyn
   const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", csrf));
   assert.equal(up.status, 201, up.text);
   const [[file]] = await db.query("SELECT storage_key FROM attachments WHERE id = ?", [up.data.attachmentId]);
-  const onDisk = await fs.readFile(path.join(config.uploads.privateDir, "attachments", `${file.storage_key}.bin`));
-  assert.ok(!onDisk.subarray(0, 16).includes(Buffer.from("PNG")), "fichier chiffré sur le disque");
+  // Contenu conservé dans la base (le dossier de l'application est recréé à chaque déploiement), chiffré.
+  const [[blob]] = await db.query("SELECT content FROM attachment_blobs WHERE storage_key = ?", [file.storage_key]);
+  assert.ok(blob, "fichier enregistré dans la base");
+  assert.ok(!blob.content.subarray(0, 16).includes(Buffer.from("PNG")), "fichier chiffré dans la base");
+  await assert.rejects(fs.access(path.join(config.uploads.privateDir, "attachments", `${file.storage_key}.bin`)), "rien sur le disque");
   const proof = await request(clientSocket, "message:send", { conversationId, type: "proof", data: { attachmentId: up.data.attachmentId } });
   assert.ok(proof.ok, proof.error);
   const asClient = await fetch(`${base}/fichiers/${up.data.attachmentId}`, { headers: { cookie: clientJar.header() } });
@@ -370,9 +373,8 @@ test("messagerie éphémère : effacement 10 jours après la clôture, transacti
   assert.equal(purged.files, 2);
   const [[left]] = await db.query("SELECT COUNT(*) AS n FROM conversation_events");
   assert.equal(left.n, 0);
-  for (const f of files) {
-    await assert.rejects(fs.access(path.join(config.uploads.privateDir, "attachments", `${f.storage_key}.bin`)), "fichier supprimé du disque");
-  }
+  const [[blobsLeft]] = await db.query("SELECT COUNT(*) AS n FROM attachment_blobs WHERE storage_key IN (?)", [files.map((f) => f.storage_key)]);
+  assert.equal(blobsLeft.n, 0, "contenu des fichiers effacé de la base");
   const [[tx]] = await db.query("SELECT status, payout_details_enc FROM transactions");
   assert.equal(tx.status, "completed");
   assert.equal(tx.payout_details_enc, null, "coordonnées du client effacées");
@@ -615,4 +617,42 @@ test("pendant l'attente du client, le mandataire valide ou rejette (avec preuve)
   assert.ok((await send(clientSocket, "client_choice", { choice: "leave" })).ok);
   assert.equal(await status(), "awaiting_review");
   assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 2, appreciation: "trop_lent" })).ok);
+});
+
+test("accusés de lecture : deux traits quand l'autre participant a lu, en direct", async () => {
+  // Le mandataire a la conversation ouverte (salon de la conversation)
+  const proTab = await connect(proJar, { auth: { space: "mandataire" } });
+  const joined = await request(proTab, "conversation:join", { conversationId });
+  assert.ok(joined.ok, joined.error);
+  assert.ok(Object.hasOwn(joined, "otherReadAt"), "dernière lecture du client fournie à la reconnexion");
+  // Le client ouvre la conversation : le mandataire est prévenu aussitôt
+  const seen = nextEvent(proTab, "conversation:seen");
+  assert.equal((await http(clientJar, "GET", "/client/messages/afipro")).status, 200);
+  const payload = await seen;
+  assert.equal(payload.conversationId, conversationId);
+  assert.equal(payload.role, "client");
+  assert.ok(Date.parse(payload.at) > 0);
+  // Page du mandataire : la date de lecture du client est transmise au panneau (messages lus jusque-là)
+  const proPage = await http(proJar, "GET", `/mandataire/messages/${conversationId}`);
+  const flow = JSON.parse(proPage.text.match(/data-chat-flow>([\s\S]*?)<\/script>/)[1]);
+  assert.equal(flow.otherReadAt, payload.at);
+  // Lecture signalée par un onglet du client (message reçu pendant qu'il regarde) : même accusé
+  const clientTab = await connect(clientJar, { auth: { space: "client" } });
+  const seenAgain = nextEvent(proTab, "conversation:seen");
+  assert.ok((await request(clientTab, "conversation:read", { conversationId })).ok);
+  const again = await seenAgain;
+  assert.equal(again.role, "client");
+  assert.ok(Date.parse(again.at) >= Date.parse(payload.at));
+});
+
+test("fichier perdu (ancien déploiement) : « introuvable », jamais une erreur serveur", async () => {
+  const [[tx]] = await db.query("SELECT id, conversation_id, client_id FROM transactions ORDER BY id DESC LIMIT 1");
+  const lostKey = "ab".repeat(24); // ni dans la base, ni sur le disque
+  const [r] = await db.execute(
+    "INSERT INTO attachments (conversation_id, transaction_id, uploaded_by, kind, storage_key, original_name, mime_type, size_bytes, sha256) VALUES (?, ?, ?, 'payment_proof', ?, 'perdu.png', 'image/png', 10, ?)",
+    [tx.conversation_id, tx.id, tx.client_id, lostKey, "0".repeat(64)],
+  );
+  const res = await fetch(`${base}/fichiers/${r.insertId}?espace=client`, { headers: { cookie: clientJar.header() } });
+  assert.equal(res.status, 404);
+  await db.execute("DELETE FROM attachments WHERE id = ?", [r.insertId]);
 });

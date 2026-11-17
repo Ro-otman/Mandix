@@ -522,6 +522,10 @@ a.kpi:hover { color: inherit; border-color: var(--blue-100); box-shadow: var(--s
 .msg--me .msg__bubble { color: var(--on-color); background: var(--color-primary); border-bottom-right-radius: 6px; }
 .msg__meta { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--color-text-muted); }
 .msg--me .msg__meta .icon { color: var(--color-primary); }
+/* Accusés de lecture : un trait gris (envoyé), deux traits colorés (lu) */
+.msg__ticks { display: inline-flex; align-items: center; }
+.msg--me .msg__meta .msg__ticks .icon { color: var(--gray-500); transition: color var(--duration-base); }
+.msg--me .msg__meta .msg__ticks.is-read .icon { color: var(--color-primary); }
 .msg--new { animation: msg-in 280ms var(--ease-out); }
 
 @keyframes msg-in {
@@ -1080,6 +1084,7 @@ html.has-drawer { overflow: hidden; }
 .msg__proof-image { display: block; width: 220px; max-width: 100%; max-height: 260px; margin-top: 6px; object-fit: cover; border-radius: 10px; background: var(--white); }
 .msg__file { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; background: var(--gray-50); border-radius: 10px; }
 .msg--me .msg__file { background: rgba(255, 255, 255, 0.16); }
+.msg__file--gone { opacity: 0.75; font-style: italic; }
 .msg__file-name { font-weight: 600; overflow-wrap: anywhere; }
 .msg__file-size { font-size: var(--text-xs); opacity: 0.75; }
 
