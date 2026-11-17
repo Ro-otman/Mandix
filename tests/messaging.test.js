@@ -568,3 +568,51 @@ test("rejet avec preuve obligatoire : Attendre / Je laisse / Je renvoie ma preuv
   assert.equal(final.rejected_count, 3);
   assert.equal(final.restriction_reason, "sanction");
 });
+
+test("pendant l'attente du client, le mandataire valide ou rejette (avec preuve) : nouveau choix du client", async () => {
+  // Nouvelles connexions (comme de nouveaux onglets) : la limite de 40 actions par minute est propre à chaque connexion.
+  const clientSocket = await connect(clientJar, { auth: { space: "client" } });
+  const proSocket = await connect(proJar, { auth: { space: "mandataire" } });
+  const send = (socket, type, data = {}) => request(socket, "message:send", { conversationId, type, data });
+  const clientCsrf = csrfOf((await http(clientJar, "GET", "/client/messages/afipro")).text);
+  const proPage = await http(proJar, "GET", `/mandataire/messages/${conversationId}`);
+  const proCsrf = csrfOf(proPage.text);
+  const status = async () => (await db.query("SELECT status FROM transactions ORDER BY id DESC LIMIT 1"))[0][0].status;
+  // Règles transmises au panneau de messagerie par le serveur (source unique)
+  assert.match(proPage.text, /"proofDecisions":\{"proof_review":\["validated","rejected","pending"\],"proof_pending":\["validated","rejected"\],"client_waiting":\["validated","rejected"\]\}/);
+  const rejectWithProof = async () => {
+    const up = await http(proJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("rejection_proof", proCsrf));
+    assert.equal(up.status, 201, "preuve du rejet acceptée à cette étape");
+    return send(proSocket, "proof_status", { status: "rejected", attachmentIds: [up.data.attachmentId] });
+  };
+
+  const opened = await send(clientSocket, "request", { accountId });
+  assert.ok(opened.ok, opened.error);
+  assert.ok((await send(proSocket, "ask_amount")).ok);
+  assert.ok((await send(clientSocket, "amount", { amount: 40, currency: "EUR" })).ok);
+  assert.ok((await send(proSocket, "receive_info", { option: "friends_family" })).ok);
+  const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", clientCsrf));
+  assert.ok((await send(clientSocket, "proof", { attachmentId: up.data.attachmentId })).ok);
+  assert.ok((await rejectWithProof()).ok);
+
+  // Attendre : 7 jours, en espérant que le paiement arrive dans ce délai.
+  const waited = await send(clientSocket, "client_choice", { choice: "wait" });
+  assert.ok(waited.ok);
+  assert.equal(await status(), "client_waiting");
+  const [[waitNote]] = await db.query("SELECT title, body FROM notifications WHERE type = 'message.client_choice' ORDER BY id DESC LIMIT 1");
+  assert.match(waitNote.title, /attend 7 jours que le paiement arrive/);
+  assert.match(waitNote.body, /J'attends 7 jours, en espérant que le paiement arrive dans ce délai/);
+
+  // Pendant l'attente : Valide ou Rejeté (plus « En attente »), le rejet toujours avec sa preuve.
+  assert.match((await send(proSocket, "proof_status", { status: "pending" })).error, /plus d'actualité/);
+  assert.match((await send(proSocket, "proof_status", { status: "rejected" })).error, /preuve du rejet/);
+  const second = await rejectWithProof();
+  assert.ok(second.ok, second.error);
+  assert.equal(second.event.data.rejections, 2);
+  assert.equal(await status(), "rejection_choice");
+  // 2e rejet : Attendre, Je laisse, Faire vérifier ce mandataire.
+  assert.match((await send(clientSocket, "client_choice", { choice: "resend" })).error, /Attendre, Je laisse, ou Faire vérifier ce mandataire/);
+  assert.ok((await send(clientSocket, "client_choice", { choice: "leave" })).ok);
+  assert.equal(await status(), "awaiting_review");
+  assert.ok((await request(clientSocket, "review:submit", { conversationId, rating: 2, appreciation: "trop_lent" })).ok);
+});

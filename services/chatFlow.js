@@ -7,15 +7,20 @@
  *   4. mandataire : ses coordonnées de réception pour le compte choisi ; PayPal : type d'envoi
  *      (Amis et proches / Biens et services) ; virement : mode (instantané / classique)
  *   5. client : preuve de paiement (image ou PDF)
- *   6. mandataire : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ » (avec, obligatoirement, une preuve du
- *      rejet pour le client : capture, document…), ou « En attente : Pas encore bon 🔄 » (7 jours au plus, rappel
- *      quotidien au mandataire).
- *      - 1er rejet : le client choisit Attendre (7 jours), Je laisse, ou Je renvoie ma preuve.
- *      - 2e rejet : le client choisit Attendre (7 jours), Je laisse, ou Faire vérifier ce mandataire.
- *      - Fin des 7 jours (En attente, ou Attendre) : le client choisit Je laisse, ou Faire vérifier ce mandataire.
- *      - Faire vérifier : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix
- *        lève la restriction (refus justifié) ou la prolonge de 100 jours ; la transaction est rejetée.
- *      - Je laisse : le client confirme que ce n'est pas bon ; la transaction est rejetée.
+ *   6. décision sur la preuve (règles : PROOF_DECISIONS, rejectionChoices, expiredChoices ci-dessous) :
+ *      a. le mandataire répond : « Valide : C'est bon ✅ » (étape 7), « Rejeté : C'est pas bon ❌ » (avec, toujours,
+ *         une preuve du rejet pour le client : capture, document…) ou « En attente : Pas encore bon 🔄 » (7 jours au
+ *         plus, rappel quotidien ; il peut ensuite valider ou rejeter) ;
+ *      b. après un rejet, le client choisit :
+ *           1er rejet : Attendre · Je laisse · Je renvoie ma preuve (retour à l'étape 5)
+ *           2e rejet et suivants : Attendre · Je laisse · Faire vérifier ce mandataire
+ *      c. Attendre : le client attend 7 jours, en espérant que le paiement arrive dans ce délai. Pendant l'attente, le
+ *         mandataire peut encore valider (étape 7) ou rejeter (nouveau rejet : retour en b) ;
+ *      d. fin des 7 jours sans décision : Je laisse · Je renvoie ma preuve (attente après le 1er rejet), ou
+ *         Je laisse · Faire vérifier ce mandataire (paiement « En attente », ou attente après le 2e rejet) ;
+ *      e. Faire vérifier : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix lève
+ *         la restriction (refus justifié) ou la prolonge de 100 jours ; la transaction est rejetée ;
+ *      f. Je laisse : le client confirme que ce n'est pas bon ; la transaction est rejetée.
  *   7. mandataire (paiement validé) : « Par quel moyen souhaitez-vous recevoir l'argent ? »
  *   8. client : son pays, un moyen de réception disponible dans ce pays (Mobile Money, Moov Money, crypto,
  *      virement…, content/payout-methods.js) et ses informations (ex. numéro + nom et prénoms)
@@ -68,6 +73,21 @@ export const VERIFICATION_HOURS = 72;
 /** Restriction d'un mandataire dont le refus n'est pas justifié (ou sans preuve) : 100 jours. */
 export const SANCTION_DAYS = 100;
 
+/**
+ * Décisions possibles du mandataire sur la preuve de paiement, selon l'étape (statut de la transaction) :
+ *  - preuve reçue : Valide, Rejeté ou En attente ;
+ *  - paiement « En attente » (7 jours au plus) : Valide ou Rejeté ;
+ *  - le client attend 7 jours après un rejet : Valide ou Rejeté.
+ * Source unique des règles : le serveur les applique et les transmet au panneau de messagerie (flow.proofDecisions).
+ */
+export const PROOF_DECISIONS = Object.freeze({
+  proof_review: Object.freeze(["validated", "rejected", "pending"]),
+  proof_pending: Object.freeze(["validated", "rejected"]),
+  client_waiting: Object.freeze(["validated", "rejected"]),
+});
+/** Étapes où la décision `decision` est possible. */
+export const statusesAllowing = (decision) => Object.keys(PROOF_DECISIONS).filter((status) => PROOF_DECISIONS[status].includes(decision));
+
 /** Décisions du mandataire sur une preuve de paiement (mêmes libellés que les boutons). */
 export const PROOF_STATUS_TEXT = {
   validated: "Valide : C'est bon ✅",
@@ -77,7 +97,7 @@ export const PROOF_STATUS_TEXT = {
 
 /** Choix du client après un rejet, ou à la fin des 7 jours d'attente. */
 export const CLIENT_CHOICE_TEXT = {
-  wait: "J'attends : le paiement reste en cours, non validé, pendant 7 jours.",
+  wait: "J'attends 7 jours, en espérant que le paiement arrive dans ce délai.",
   leave: "Je laisse : je confirme que ce n'est pas bon. La transaction s'arrête.",
   resend: "Je renvoie ma preuve de paiement.",
   verify: "Je fais vérifier ce mandataire par l'équipe Mandix.",

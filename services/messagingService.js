@@ -15,6 +15,8 @@
  *    1er rejet : le client choisit Attendre (7 jours, puis Je laisse / Je renvoie ma preuve), Je laisse, ou Je
  *    renvoie ma preuve ; 2e rejet : Attendre (7 jours, puis Je laisse / Faire vérifier), Je laisse, ou Faire
  *    vérifier ce mandataire.
+ *  - Attendre : pendant les 7 jours, le mandataire peut encore valider, ou rejeter (avec preuve : nouveau rejet,
+ *    nouveau choix du client). Règles des décisions : PROOF_DECISIONS (services/chatFlow.js).
  *  - Vérification : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix lève la
  *    restriction (refus justifié) ou la prolonge de 100 jours (refus non justifié, ou aucune preuve).
  *    Restreint : plus d'ajout de compte, niveau bloqué.
@@ -38,7 +40,7 @@ import { CERTIFICATION_THRESHOLD } from "../utils/badges.js";
 import { sensitiveReason } from "../utils/sensitive.js";
 import { avatarSvg, defaultAvatarSpec } from "../utils/avatar.js";
 import { presence } from "../utils/presence.js";
-import { eventText, PENDING_MAX_DAYS, MAX_REJECTIONS, VERIFICATION_HOURS, SANCTION_DAYS, rejectionChoices, expiredChoices, choiceList } from "./chatFlow.js";
+import { eventText, PENDING_MAX_DAYS, MAX_REJECTIONS, VERIFICATION_HOURS, SANCTION_DAYS, rejectionChoices, expiredChoices, choiceList, PROOF_DECISIONS, statusesAllowing } from "./chatFlow.js";
 import * as notifications from "./notificationService.js";
 import * as files from "./fileService.js";
 import * as hub from "../realtime/hub.js";
@@ -195,7 +197,7 @@ function notificationFor(type, data, { role, conversation }) {
     receive_info: `${name} vous a envoyé ses coordonnées`,
     proof: `Preuve de paiement reçue de ${name}`,
     proof_status: { validated: "Paiement validé", rejected: "Preuve de paiement rejetée", pending: "Paiement en attente" }[data.status],
-    client_choice: { wait: `${name} attend encore 7 jours`, leave: `${name} a laissé la transaction`, resend: `${name} va renvoyer sa preuve de paiement`, verify: `${name} demande la vérification de votre compte` }[data.choice],
+    client_choice: { wait: `${name} attend 7 jours que le paiement arrive`, leave: `${name} a laissé la transaction`, resend: `${name} va renvoyer sa preuve de paiement`, verify: `${name} demande la vérification de votre compte` }[data.choice],
     refusal_proof: `${name} a envoyé les preuves du refus à l'équipe Mandix`,
     ask_payout: `${name} vous demande le moyen de réception`,
     credit_proof_request: `${name} demande une preuve de non-crédit`,
@@ -301,15 +303,11 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         break;
       }
       case "proof_status": {
-        // « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 ».
-        // Pendant l'attente (la sienne ou celle choisie par le client), le mandataire peut encore trancher.
+        // « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 », selon l'étape
+        // (PROOF_DECISIONS) : pendant une attente (la sienne ou celle du client), le mandataire peut encore trancher.
         const status = data.status;
-        const allowed = {
-          pending: ["proof_review"],
-          rejected: ["proof_review", "proof_pending"],
-          validated: ["proof_review", "proof_pending", "client_waiting"],
-        }[status];
-        if (!allowed) fail("Décision inconnue.", 422);
+        const allowed = statusesAllowing(status);
+        if (!allowed.length) fail("Décision inconnue.", 422);
         expect("mandataire", ...allowed);
         const proofEventId = await lastProofEvent(transactionId, connection);
         const [proofFile] = proofEventId ? (await connection.execute("SELECT id FROM attachments WHERE event_id = ? LIMIT 1", [proofEventId]))[0] : [];
@@ -513,7 +511,7 @@ const UPLOAD_RULES = {
   payment_proof: { role: "client", statuses: ["awaiting_proof"] },
   transfer_proof: { role: "mandataire", statuses: ["awaiting_transfer"] },
   credit_evidence: { role: "mandataire", statuses: ["verification_requested"] }, // preuves du refus (vérification)
-  rejection_proof: { role: "mandataire", statuses: ["proof_review", "proof_pending"] }, // jointe à « Rejeté »
+  rejection_proof: { role: "mandataire", statuses: statusesAllowing("rejected") }, // jointe à « Rejeté »
 };
 
 /** Fichier envoyé avant le message qui le joint : vérifié, chiffré, rattaché à la transaction en cours. */
@@ -651,6 +649,7 @@ export async function chatView(user, { active = null, mandataire = null, basePat
         pendingMaxDays: PENDING_MAX_DAYS,
         payout: PAYOUT_CHOICES,
         maxRejections: MAX_REJECTIONS,
+        proofDecisions: PROOF_DECISIONS, // règles des décisions du mandataire, appliquées aussi par le serveur
         verificationHours: VERIFICATION_HOURS,
         sanctionDays: SANCTION_DAYS,
         events,

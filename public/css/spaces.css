@@ -1300,7 +1300,6 @@ html.has-drawer { overflow: hidden; }
 .msg__gallery .msg__proof-image { width: 140px; max-height: 180px; margin-top: 0; }
 
 .flow-stack { display: grid; gap: var(--space-2); }
-.flow__actions--late { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-top: var(--space-2); border-top: 1px dashed var(--color-border); }
 .flow-files { display: grid; gap: 6px; list-style: none; }
 .flow-files__item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--gray-50); border-radius: 10px; }
 .flow-files__thumb { flex-shrink: 0; width: 36px; height: 36px; object-fit: cover; border-radius: 8px; background: var(--white); }
