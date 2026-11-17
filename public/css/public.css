@@ -191,6 +191,12 @@
   margin-right: auto;
 }
 
+/* Utilisateur connecté : le menu se range à droite, juste avant « Mon espace » */
+.navbar--signed-in .navbar__nav {
+  margin-right: 0;
+  margin-left: auto;
+}
+
 .navbar__menu {
   display: flex;
   align-items: center;

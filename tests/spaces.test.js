@@ -433,3 +433,8 @@ test("espace mandataire : fenêtre « Comprendre les niveaux », ouverte d'elle-
   assert.doesNotMatch(again.text, /data-auto-open/, "ne s'ouvre plus d'elle-même");
   assert.doesNotMatch((await http(await login("momo@exemple.com"), "GET", "/client/dashboard")).text, /levels-dialog/, "réservée aux mandataires");
 });
+
+test("en-tête du site : menu à droite une fois connecté", async () => {
+  assert.doesNotMatch((await http(new CookieJar(), "GET", "/")).text, /navbar--signed-in/, "visiteur : menu à côté du logo");
+  assert.match((await http(await login("momo@exemple.com"), "GET", "/")).text, /class="navbar navbar--signed-in"/);
+});
