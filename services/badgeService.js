@@ -1,5 +1,6 @@
 /**
- * Compteurs des espaces (messages non lus, notifications non lues, vérifications à traiter pour l'équipe).
+ * Compteurs des espaces (messages non lus, notifications non lues ; pour l'équipe : vérifications à traiter et
+ * nouvelles suggestions).
  *  - countsFor : valeurs affichées au chargement d'une page (menu latéral, points de la barre du haut).
  *  - pushBadges / pushAdminBadges : valeurs exactes envoyées en direct (événement « badges ») à tous les onglets
  *    connectés du compte, à chaque changement : nouveau message, conversation lue, décision de l'équipe…
@@ -27,8 +28,10 @@ export async function countsFor(user, mandataireId = null) {
     );
     messages = Number(row.n);
   } else if (user.role === "admin") {
-    const [[row]] = await pool.execute("SELECT COUNT(*) AS n FROM verification_requests WHERE status = 'open'");
-    return { verifications: Number(row.n), notifications: Number(notifications.n) };
+    const [[row]] = await pool.execute(
+      "SELECT (SELECT COUNT(*) FROM verification_requests WHERE status = 'open') AS verifications, (SELECT COUNT(*) FROM suggestions WHERE status = 'new') AS suggestions",
+    );
+    return { verifications: Number(row.verifications), suggestions: Number(row.suggestions), notifications: Number(notifications.n) };
   }
   return { messages, notifications: Number(notifications.n) };
 }
@@ -51,7 +54,7 @@ export async function pushBadges(...userIds) {
   }));
 }
 
-/** Compteur « Vérifications » de l'équipe : envoyé à tous les administrateurs connectés. */
+/** Compteurs « Vérifications » et « Suggestions » de l'équipe : envoyés à tous les administrateurs connectés. */
 export async function pushAdminBadges() {
   try {
     const [admins] = await pool.execute("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");

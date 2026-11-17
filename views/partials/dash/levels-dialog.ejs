@@ -1,0 +1,63 @@
+<%#
+  Fenêtre « Comprendre les niveaux » de l'espace mandataire : pourquoi le plafond est limité, comment monter de
+  niveau, et l'astuce de faire venir ses clients actuels sur Mandix. Ouverte automatiquement à la première visite
+  (jusqu'à « J'ai compris »), puis à la demande (boutons data-modal-open="levels-dialog"). public/js/levels.js.
+  Locaux : levelsIntro (services/spaceService.js → levelsIntroFor).
+%>
+<% const L = levelsIntro; const n = (v) => fmt.formatNumber(v); %>
+<dialog class="modal modal--wide levels-modal" id="levels-dialog" aria-labelledby="levels-title" <%- L.autoOpen ? 'data-auto-open' : '' %>>
+  <div class="modal__header">
+    <span class="modal__icon"><%- icon('trending-up', { size: 22 }) %></span>
+    <div>
+      <h2 class="modal__title" id="levels-title">Comprendre les niveaux</h2>
+      <p class="text-muted text-sm">Niveau <%= L.level %> · plafond de <%= L.limitText %> par transaction</p>
+    </div>
+    <button class="btn btn--ghost btn--icon levels-modal__close" type="button" data-modal-close aria-label="Fermer"><%- icon('x', { size: 20 }) %></button>
+  </div>
+
+  <div class="modal__body levels-modal__body">
+    <section class="levels-block">
+      <h3 class="levels-block__title"><%- icon('shield', { size: 18 }) %> Pourquoi un plafond ?</h3>
+      <p>Sur <%= appName %>, la confiance se construit transaction après transaction. Un nouveau profil n'a pas encore d'historique : le plafond limite le montant de chaque transaction pour protéger les clients pendant que vous faites vos preuves.</p>
+    </section>
+
+    <section class="levels-block">
+      <h3 class="levels-block__title"><%- icon('layers', { size: 18 }) %> Comment monter de niveau ?</h3>
+      <p>Chaque transaction réussie (l'argent bien reçu par le client, puis la transaction évaluée) compte pour votre niveau. Au fil du temps, votre plafond augmente, jusqu'au niveau 10 et la certification. Les transactions rejetées ne comptent pas.</p>
+      <% if (L.next) { %>
+        <p class="levels-progress">
+          <strong><%= n(L.done) %></strong> transaction<%= L.done > 1 ? 's' : '' %> réussie<%= L.done > 1 ? 's' : '' %> ·
+          encore <strong><%= n(L.next.left) %></strong> pour le niveau <%= L.next.level %> (<%= L.next.limitText %>)
+        </p>
+      <% } else { %>
+        <p class="levels-progress"><strong>Niveau 10 atteint</strong> : plus de plafond.</p>
+      <% } %>
+      <ol class="tier-list levels-tiers" aria-label="Niveaux et plafonds">
+        <% L.tiers.forEach((t) => { const state = t.level < L.level ? 'done' : t.level === L.level ? 'current' : 'next'; %>
+          <li class="tier tier--<%= state %>" <%- state === 'current' ? 'aria-current="step"' : '' %>>
+            <span class="tier__marker"><% if (state === 'next') { %><%= t.level %><% } else { %><%- icon('check', { size: 12, strokeWidth: 3 }) %><% } %></span>
+            <span class="tier__range"><strong>Niveau <%= t.level %></strong> · <%= t.from === 0 ? `dès l'inscription` : `${n(t.from)} transactions` %><% if (t.certification) { %> · certification<% } %></span>
+            <span class="tier__limit"><%= t.limitText %></span>
+          </li>
+        <% }) %>
+      </ol>
+    </section>
+
+    <section class="levels-block levels-block--tip">
+      <h3 class="levels-block__title"><%- icon('rocket', { size: 18 }) %> Montez plus vite avec vos clients actuels</h3>
+      <p>Vous avez déjà des clients en dehors de <%= appName %> ? Proposez-leur de faire leurs transactions avec vous sur <%= appName %> : chaque transaction réussie compte pour votre niveau, et votre plafond augmente plus rapidement.</p>
+      <% if (L.profileUrl) { %>
+        <div class="levels-share">
+          <code class="levels-share__url" tabindex="0"><%= L.profileUrl %></code>
+          <button class="btn btn--secondary btn--sm" type="button" data-copy-link="<%= L.profileUrl %>"><%- icon('copy', { size: 15 }) %> Copier le lien de ma fiche</button>
+        </div>
+      <% } else { %>
+        <p class="text-muted text-sm">Votre fiche devient visible dès votre premier compte publié : ajoutez un compte, puis partagez le lien de votre fiche.</p>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="modal__footer">
+    <button type="button" class="btn btn--primary" data-modal-close autofocus>J'ai compris</button>
+  </div>
+</dialog>

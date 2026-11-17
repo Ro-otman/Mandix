@@ -377,3 +377,59 @@ test("connexion administrateur : jamais redirigée vers une autre session du nav
   assert.equal((await http(jar, "GET", "/client/dashboard")).status, 200);
   assert.equal((await http(jar, "GET", "/mandataire/comptes")).status, 200);
 });
+
+test("suggestions : envoyées depuis les espaces client et mandataire, visibles uniquement par l'équipe", async () => {
+  const client = await login("momo@exemple.com");
+  const form = await http(client, "GET", "/client/suggestions");
+  assert.equal(form.status, 200);
+  assert.match(form.text, /Envoyer ma suggestion/);
+  assert.match(form.text, /href="\/client\/suggestions"/, "lien dans le menu");
+  // Données vérifiées par le serveur
+  const invalid = await http(client, "POST", "/client/suggestions", { _csrf: csrfOf(form.text), topic: "pirate", message: "court" });
+  assert.equal(invalid.status, 422);
+  assert.match(invalid.text, /Choisissez un sujet/);
+  assert.match(invalid.text, /10 caractères minimum/);
+  const sent = await http(client, "POST", "/client/suggestions", { _csrf: csrfOf(form.text), topic: "feature", message: "Pouvoir <b>filtrer</b> les mandataires par délai de réponse." });
+  assert.equal(sent.status, 303);
+  assert.equal(sent.location, "/client/suggestions");
+  const after = await http(client, "GET", "/client/suggestions");
+  assert.match(after.text, /Suggestion envoyée/);
+  assert.doesNotMatch(after.text, /filtrer/, "la page ne liste pas les suggestions");
+
+  const pro = await login("afi@exemple.com");
+  const proForm = await http(pro, "GET", "/mandataire/suggestions");
+  assert.equal(proForm.status, 200);
+  assert.equal((await http(pro, "POST", "/mandataire/suggestions", { _csrf: csrfOf(proForm.text), topic: "problem", message: "Ajouter un rappel quand un client attend ma réponse." })).status, 303);
+
+  // Réservées à l'équipe
+  assert.equal((await http(client, "GET", "/admin/suggestions")).status, 302);
+  const admin = await login("admin@exemple.com");
+  const list = await http(admin, "GET", "/admin/suggestions");
+  assert.equal(list.status, 200);
+  assert.match(list.text, /Pouvoir &lt;b&gt;filtrer&lt;\/b&gt; les mandataires/, "texte affiché échappé");
+  assert.match(list.text, /Ajouter un rappel/);
+  assert.match(list.text, /data-live-badge="suggestions" aria-label="2 nouvelles"/);
+  // Suivi : traitée
+  const [[row]] = await db.query("SELECT id FROM suggestions WHERE topic = 'feature' ORDER BY id DESC LIMIT 1");
+  const done = await http(admin, "POST", `/admin/suggestions/${row.id}/statut`, { _csrf: csrfOf(list.text), statut: "done" });
+  assert.equal(done.status, 303);
+  const [[updated]] = await db.query("SELECT status, read_at IS NOT NULL AS is_read FROM suggestions WHERE id = ?", [row.id]);
+  assert.equal(updated.status, "done");
+  assert.equal(Number(updated.is_read), 1);
+  assert.match((await http(admin, "GET", "/admin/suggestions?statut=new")).text, /aria-label="1 nouvelle"/);
+});
+
+test("espace mandataire : fenêtre « Comprendre les niveaux », ouverte d'elle-même une seule fois", async () => {
+  const pro = await login("afi@exemple.com");
+  const page = await http(pro, "GET", "/mandataire/comptes");
+  assert.match(page.text, /<dialog[^>]*id="levels-dialog"[^>]*data-auto-open/, "ouverte à la première visite");
+  assert.match(page.text, /Pourquoi un plafond/);
+  assert.match(page.text, /Montez plus vite avec vos clients actuels/);
+  assert.match(page.text, /data-modal-open="levels-dialog"/, "bouton pour la rouvrir");
+  const seen = await http(pro, "POST", "/mandataire/niveaux/vu", null, { "x-csrf-token": csrfOf(page.text), accept: "application/json" });
+  assert.equal(seen.status, 200);
+  const again = await http(pro, "GET", "/mandataire/statistiques");
+  assert.match(again.text, /id="levels-dialog"/, "toujours disponible");
+  assert.doesNotMatch(again.text, /data-auto-open/, "ne s'ouvre plus d'elle-même");
+  assert.doesNotMatch((await http(await login("momo@exemple.com"), "GET", "/client/dashboard")).text, /levels-dialog/, "réservée aux mandataires");
+});

@@ -17,6 +17,7 @@ import * as fmt from "../utils/format.js";
 import { CERTIFICATION_THRESHOLD } from "../utils/badges.js";
 import { avatarSvg, defaultAvatarSpec } from "../utils/avatar.js";
 import { notFound } from "../utils/httpError.js";
+import pool from "../config/database.js";
 
 const router = Router();
 const context = (req) => ({ user: req.currentUser, ip: req.ip, userAgent: req.get("user-agent")?.slice(0, 255) ?? null });
@@ -35,6 +36,12 @@ function proView(req) {
     verified: Boolean(m.verified_at),
   };
 }
+
+// Fenêtre « Comprendre les niveaux » fermée : elle ne s'ouvrira plus d'elle-même.
+router.post("/mandataire/niveaux/vu", async (req, res) => {
+  await pool.execute("UPDATE mandataire_profiles SET levels_intro_seen_at = COALESCE(levels_intro_seen_at, UTC_TIMESTAMP()) WHERE id = ?", [req.mandataire.id]);
+  res.json({ ok: true });
+});
 
 router.get("/mandataire/statistiques", async (req, res) => {
   const pro = proView(req);

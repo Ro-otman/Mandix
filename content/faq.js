@@ -13,7 +13,7 @@ export const homeFaq = [
   {
     question: "Que se passe-t-il si mon paiement reste « en attente » ?",
     answer:
-      "Un mandataire peut mettre un paiement en attente (« Pas encore bon 🔄 ») pendant 7 jours au maximum ; il reçoit un rappel chaque jour. Au-delà, ou si votre preuve est rejetée plus de 2 fois, vous choisissez : laisser, ou faire vérifier le mandataire. Pendant la vérification, son compte est restreint ; s'il ne justifie pas son refus sous 72 heures, il reste restreint 100 jours.",
+      "Un mandataire peut mettre un paiement en attente (« Pas encore bon 🔄 ») pendant 7 jours au maximum ; il reçoit un rappel chaque jour. Au-delà, vous choisissez : laisser, ou faire vérifier le mandataire. Si votre preuve est rejetée, le mandataire doit vous montrer une preuve du rejet ; vous pouvez alors attendre, laisser ou renvoyer votre preuve. Au 2e rejet, vous pouvez faire vérifier le mandataire. Pendant la vérification, son compte est restreint ; s'il ne justifie pas son refus sous 72 heures, il reste restreint 100 jours.",
   },
   {
     question: "Comment est fixé le plafond d'un mandataire ?",

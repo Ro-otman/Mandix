@@ -17,7 +17,10 @@
     <h1>Mes comptes</h1>
     <p>Vos comptes de réception, publiés sur votre profil dès leur ajout.</p>
   </div>
-  <button class="btn btn--primary" type="button" data-account-add aria-haspopup="dialog" <%= restrictedUntil ? 'disabled' : '' %>><%- icon('plus', { size: 17 }) %> Ajouter un compte</button>
+  <div class="cluster">
+    <button class="btn btn--ghost-border" type="button" data-modal-open="levels-dialog" aria-haspopup="dialog"><%- icon('trending-up', { size: 17 }) %> Comprendre les niveaux</button>
+    <button class="btn btn--primary" type="button" data-account-add aria-haspopup="dialog" <%= restrictedUntil ? 'disabled' : '' %>><%- icon('plus', { size: 17 }) %> Ajouter un compte</button>
+  </div>
 </div>
 
 <% if (restrictedUntil) { %>

@@ -1400,6 +1400,13 @@ html.has-drawer { overflow: hidden; }
 .flow__chips--choices .flow-chip__detail { font-family: inherit; font-weight: 500; white-space: normal; }
 .flow-chip--verify { color: var(--navy); border-color: var(--color-border-strong); border-radius: 999px; }
 .flow-chip--verify:hover { color: var(--on-color); background: var(--navy); border-color: var(--navy); }
+.flow-chip--resend { color: var(--color-primary); border-color: var(--color-primary); border-radius: 999px; }
+.flow-chip--resend:hover { color: var(--on-color); background: var(--color-primary); border-color: var(--color-primary); }
+
+/* « Rejeté : C'est pas bon ❌ » : preuve du rejet jointe par le mandataire (obligatoire) */
+.msg__bubble--status:has(.msg__reject-proof) { flex-wrap: wrap; }
+.msg__reject-proof { display: grid; gap: 4px; flex-basis: 100%; margin-top: 6px; font-weight: 500; }
+.flow__cancel { justify-self: start; margin-top: var(--space-2); }
 
 /* Moyen de réception : recherche du pays, moyens disponibles, informations */
 .flow-payout { display: grid; gap: var(--space-4); }
@@ -1412,3 +1419,36 @@ html.has-drawer { overflow: hidden; }
 .flow-payout__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .flow-payout__fields:empty { display: none; }
 @media (max-width: 560px) { .flow-payout__fields { grid-template-columns: 1fr; } }
+
+/* ----------------------------------------------------------------------------- Suggestions */
+.suggestion-form .choice-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.suggestion-form fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+.sugg-tabs { margin-bottom: var(--space-5); }
+.sugg-tabs__count { margin-left: 4px; font-size: var(--text-xs); color: var(--color-text-muted); }
+.sugg-list { display: grid; gap: var(--space-4); padding: 0; margin: 0; list-style: none; }
+.sugg { display: grid; gap: var(--space-2); }
+.sugg.is-new { border-color: var(--color-primary); box-shadow: inset 3px 0 0 var(--color-primary); }
+.sugg__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sugg__author { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.sugg__author a { color: inherit; }
+.sugg__meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--color-text-muted); }
+.sugg__message { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.6; }
+.sugg__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* ----------------------------------------------------------------------------- Fenêtre « Comprendre les niveaux » */
+.levels-modal { display: none; flex-direction: column; }
+.levels-modal[open] { display: flex; }
+.levels-modal .modal__header > div { flex: 1; min-width: 0; }
+.levels-modal__close { flex-shrink: 0; margin: -6px -8px 0 0; }
+.levels-modal__body { display: grid; gap: var(--space-5); overflow-y: auto; overscroll-behavior: contain; color: var(--gray-700); }
+.levels-block { display: grid; gap: var(--space-2); }
+.levels-block__title { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-base); font-weight: 700; color: var(--navy); }
+.levels-block__title .icon { color: var(--color-primary); }
+.levels-block p { font-size: var(--text-sm); line-height: 1.6; }
+.levels-progress { padding: var(--space-2) var(--space-3); color: var(--navy); background: var(--blue-50); border-radius: var(--radius-md); }
+.levels-tiers { margin-top: var(--space-1); }
+.levels-block--tip { padding: var(--space-4); background: var(--gold-50); border: 1px solid rgba(233, 178, 63, 0.45); border-radius: var(--radius-md); }
+.levels-block--tip .levels-block__title .icon { color: var(--amber-700); }
+.levels-share { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+.levels-share__url { flex: 1 1 220px; min-width: 0; padding: 6px 10px; overflow-x: auto; font-size: var(--text-xs); white-space: nowrap; color: var(--navy); background: var(--white); border: 1px solid var(--color-border); border-radius: 8px; scrollbar-width: thin; }
+.stats-limit__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }

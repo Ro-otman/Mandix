@@ -16,6 +16,7 @@ export const dashboardMenus = {
     { label: "Notifications", href: "/client/notifications", icon: "bell", badgeKey: "notifications", drawer: "notifications" },
     { label: "Mon profil", href: "/client/profil", icon: "user", drawer: "myprofile" },
     { label: "Paramètres", href: "/client/parametres", icon: "settings" },
+    { label: "Suggestions", href: "/client/suggestions", icon: "lightbulb" },
   ],
   mandataire: [
     { label: "Mes comptes", href: "/mandataire/comptes", icon: "wallet" },
@@ -23,12 +24,14 @@ export const dashboardMenus = {
     { label: "Messages", href: "/mandataire/messages", icon: "message-circle", badgeKey: "messages", drawer: "messages" },
     { label: "Notifications", href: "/mandataire/notifications", icon: "bell", badgeKey: "notifications", drawer: "notifications" },
     { label: "Mon profil", href: "/mandataire/profil", icon: "user-check", drawer: "myprofile" },
+    { label: "Suggestions", href: "/mandataire/suggestions", icon: "lightbulb" },
   ],
   admin: [
     { label: "Accueil", href: "/admin/dashboard", icon: "house" },
     { label: "Mandataires", href: "/admin/mandataires", icon: "user-check" },
     { label: "Clients", href: "/admin/clients", icon: "users" },
     { label: "Vérifications", href: "/admin/verifications", icon: "scale", badgeKey: "verifications" },
+    { label: "Suggestions", href: "/admin/suggestions", icon: "lightbulb", badgeKey: "suggestions" },
   ],
 };
 

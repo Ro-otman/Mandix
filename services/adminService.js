@@ -199,21 +199,24 @@ export async function listVerifications() {
       ORDER BY v.status = 'open' DESC, v.created_at DESC LIMIT 100`,
   );
   const ids = rows.map((r) => r.transaction_id);
-  const files = new Map();
+  // Preuves du refus (envoyées pour la vérification) et preuves jointes à chaque « Rejeté » (vues par le client).
+  const files = { credit_evidence: new Map(), rejection_proof: new Map() };
   if (ids.length) {
     const [evidence] = await pool.query(
-      "SELECT id, transaction_id, original_name, mime_type, size_bytes FROM attachments WHERE kind = 'credit_evidence' AND transaction_id IN (?) ORDER BY id",
+      "SELECT id, transaction_id, kind, original_name, mime_type, size_bytes FROM attachments WHERE kind IN ('credit_evidence','rejection_proof') AND event_id IS NOT NULL AND transaction_id IN (?) ORDER BY id",
       [ids],
     );
     for (const f of evidence) {
-      if (!files.has(f.transaction_id)) files.set(f.transaction_id, []);
-      files.get(f.transaction_id).push({ name: f.original_name, type: f.mime_type, size: f.size_bytes, url: `/fichiers/${f.id}`, preview: f.mime_type.startsWith("image/") ? `/fichiers/${f.id}` : null });
+      const byTx = files[f.kind];
+      if (!byTx.has(f.transaction_id)) byTx.set(f.transaction_id, []);
+      byTx.get(f.transaction_id).push({ name: f.original_name, type: f.mime_type, size: f.size_bytes, url: `/fichiers/${f.id}`, preview: f.mime_type.startsWith("image/") ? `/fichiers/${f.id}` : null });
     }
   }
   return rows.map((r) => ({
     ref: r.reference, status: r.status, client: r.client, pro: r.pro, slug: r.slug, type: r.type, account: r.account,
     amount: money(r.amount == null ? null : Number(r.amount), r.currency), pendingSince: r.proof_pending_since, requestedAt: r.created_at,
-    decidedAt: r.decided_at, evidence: files.get(r.transaction_id) || [],
+    decidedAt: r.decided_at, evidence: files.credit_evidence.get(r.transaction_id) || [],
+    rejectionProofs: files.rejection_proof.get(r.transaction_id) || [],
     evidenceDueAt: r.evidence_due_at, rejections: Number(r.proof_rejections) || 0, note: r.decision_note,
   }));
 }

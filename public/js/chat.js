@@ -51,7 +51,11 @@
   };
   var DAY_MS = 864e5;
   var MAX_FILES = 5;
-  var MAX_REJECTIONS = 2; // au-delà, le client choisit : Attendre, Je laisse, Faire vérifier ce mandataire
+  // 1er rejet : Attendre, Je laisse, Je renvoie ma preuve ; 2e rejet : Attendre, Je laisse, Faire vérifier ce mandataire.
+  var MAX_REJECTIONS = 2;
+  function rejectionChoices(rejections) { return rejections >= MAX_REJECTIONS ? ["wait", "leave", "verify"] : ["wait", "leave", "resend"]; }
+  // Fin des 7 jours : Je laisse, et Je renvoie ma preuve (attente après le 1er rejet) ou Faire vérifier (services/chatFlow.js).
+  function expiredChoices(step, rejections) { return step === "client_waiting" && rejections < MAX_REJECTIONS ? ["leave", "resend"] : ["leave", "verify"]; }
 
   /* Décisions sur la preuve, choix du client, résultat d'une vérification (mêmes libellés que le serveur). */
   var PROOF_STATUS_TEXT = {
@@ -62,6 +66,7 @@
   var CLIENT_CHOICE_TEXT = {
     wait: "J'attends : le paiement reste en cours, non validé, pendant 7 jours.",
     leave: "Je laisse : je confirme que ce n'est pas bon. La transaction s'arrête.",
+    resend: "Je renvoie ma preuve de paiement.",
     verify: "Je fais vérifier ce mandataire par l'équipe Mandix.",
   };
   var VERIFICATION_TEXT = {
@@ -131,24 +136,28 @@
 
   /** Étape en cours, déduite des messages échangés. */
   function deriveState(events) {
-    var s = { step: "idle", account: null, amount: null, proofId: null, payout: null };
+    var s = { step: "idle", account: null, amount: null, proofId: null, payout: null, rejections: 0 };
     events.forEach(function (e) {
       switch (e.type) {
-        case "request": s = { step: "requested", requestId: e.id, account: e.data, amount: null, proofId: null, payout: null }; break;
+        case "request": s = { step: "requested", requestId: e.id, account: e.data, amount: null, proofId: null, payout: null, rejections: 0 }; break;
         case "ask_amount": s.step = "amount_asked"; break;
         case "amount": s.step = "amount_given"; s.amount = e.data; break;
         case "receive_info": s.step = "info_sent"; break;
-        case "proof": s.step = "proof_sent"; s.proofId = e.id; break;
+        case "proof": s.step = "proof_sent"; s.proofId = e.id; s.again = false; break;
         case "proof_status":
-          // Plus de 2 rejets : le client choisit (Attendre, Je laisse, Faire vérifier ce mandataire).
+          // Rejet (avec sa preuve) : le client choisit. Anciennes conversations (rejet sans preuve jointe, avant le
+          // 3e) : le client renvoyait directement une preuve.
+          if (e.data.status === "rejected") s.rejections = e.data.rejections || s.rejections + 1;
           s.step = e.data.status === "validated" ? "validated"
-            : e.data.status === "rejected" ? ((e.data.rejections || 0) > MAX_REJECTIONS ? "rejection_choice" : "info_sent")
+            : e.data.status === "rejected" ? (e.data.files || s.rejections > MAX_REJECTIONS ? "rejection_choice" : "info_sent")
               : "proof_pending";
+          if (s.step === "info_sent") s.again = true;
           if (e.data.status === "pending") s.pendingSince = e.at; // délai maximum de 7 jours
           break;
         case "client_choice":
           if (e.data.choice === "wait") { s.step = "client_waiting"; s.pendingSince = e.at; }
           else if (e.data.choice === "leave") s.step = "review_rejected";
+          else if (e.data.choice === "resend") { s.step = "info_sent"; s.again = true; }
           else { s.step = "verifying"; s.verifySince = e.at; }
           break;
         case "refusal_proof": s.step = "verification_review"; break;
@@ -219,6 +228,7 @@
     var pendingProof = null;
     var pendingRating = 0;
     var pendingFiles = [];
+    var rejecting = false; // le mandataire prépare un rejet : preuve du rejet à joindre
     var payoutDraft = {}; // moyen de réception en cours de saisie (pays, moyen, champs), gardé entre deux affichages
     var pendingAppreciation = null;
     var uid = flow.key.replace(/[^a-z0-9]/gi, "") + Math.random().toString(36).slice(2, 6);
@@ -262,6 +272,7 @@
       pendingAppreciation = null;
       pendingFiles = [];
       payoutDraft = {};
+      rejecting = false;
     }
     function addEvent(event) {
       if (!event || events.some(function (e) { return e.id === event.id; })) return false;
@@ -282,6 +293,11 @@
       if ((type === "credit_proof" || type === "refusal_proof") && data && data.files) {
         return Promise.all(data.files.map(function (f) { return uploadFile(f, "credit_evidence"); }))
           .then(function (list) { return { attachmentIds: list.map(function (r) { return r.attachmentId; }) }; });
+      }
+      if (type === "proof_status" && data && data.files) {
+        // « Rejeté » : les preuves du rejet sont envoyées d'abord, puis jointes à la décision.
+        return Promise.all(data.files.map(function (f) { return uploadFile(f, "rejection_proof"); }))
+          .then(function (list) { return { status: data.status, proofId: data.proofId, attachmentIds: list.map(function (r) { return r.attachmentId; }) }; });
       }
       return Promise.resolve(data || {});
     }
@@ -440,6 +456,15 @@
         icon.innerHTML = svg(tone === "validated" ? ICON.check : tone === "rejected" ? ICON.x : ICON.clock, 16);
         bubble.appendChild(icon);
         bubble.appendChild(el("span", null, eventText(e)));
+        if (d.files && d.files.length) {
+          // Preuve du rejet (capture, document) jointe par le mandataire, visible par le client.
+          var rejectProof = el("span", "msg__reject-proof");
+          rejectProof.appendChild(el("span", "msg__label", d.files.length > 1 ? "Preuves du rejet" : "Preuve du rejet"));
+          var rgallery = el("span", "msg__gallery");
+          d.files.forEach(function (f, i) { rgallery.appendChild(attachment(f, "Preuve du rejet " + (i + 1))); });
+          rejectProof.appendChild(rgallery);
+          bubble.appendChild(rejectProof);
+        }
       } else {
         bubble.appendChild(el("span", null, eventText(e)));
       }
@@ -775,11 +800,12 @@
       return wrap;
     }
 
-    /** Choix du client après plus de 2 rejets (Attendre, Je laisse, Faire vérifier), ou à la fin des 7 jours. */
+    /** Choix du client après un rejet (Attendre, Je laisse, Je renvoie ma preuve / Faire vérifier), ou à la fin des 7 jours. */
     function clientChoices(choices) {
       var LABELS = {
         wait: ["Attendre", "Le paiement reste en cours, non validé, pendant 7 jours.", ICON.clock, "flow-chip--pending"],
         leave: ["Je laisse", "Je confirme que ce n'est pas bon : la transaction s'arrête.", ICON.x, "flow-chip--reject"],
+        resend: ["Je renvoie ma preuve", "J'envoie une nouvelle preuve de paiement.", ICON.upload, "flow-chip--resend"],
         verify: ["Faire vérifier ce mandataire", "L'équipe Mandix examine ses preuves ; son compte est restreint pendant la vérification.", ICON.lock, "flow-chip--verify"],
       };
       var row = el("div", "flow__chips flow__chips--choices");
@@ -1172,13 +1198,15 @@
         } else if (state.step === "amount_asked") {
           node = amountForm(state);
         } else if (state.step === "info_sent") {
-          node = proofUploader(events[events.length - 1].type === "proof_status");
+          node = proofUploader(Boolean(state.again));
         } else if (state.step === "payout_asked") {
           node = payoutForm();
         } else if (state.step === "rejection_choice") {
-          // Plus de 2 rejets : Attendre (7 jours), Je laisse, Faire vérifier ce mandataire.
-          node = panel("Votre preuve a été rejetée plus de 2 fois : que souhaitez-vous faire ?");
-          node.appendChild(clientChoices(["wait", "leave", "verify"]));
+          // 1er rejet : Attendre, Je laisse, Je renvoie ma preuve ; 2e rejet : Attendre, Je laisse, Faire vérifier.
+          node = panel(state.rejections >= MAX_REJECTIONS
+            ? "Votre preuve a été rejetée une 2e fois : que souhaitez-vous faire ?"
+            : "Votre preuve a été rejetée : que souhaitez-vous faire ?");
+          node.appendChild(clientChoices(rejectionChoices(state.rejections)));
         } else if (state.step === "client_waiting" || state.step === "proof_pending") {
           var wait = pendingInfo(state.pendingSince);
           node = panel(state.step === "client_waiting" ? "Paiement en cours, non validé" : "En attente : Pas encore bon 🔄");
@@ -1190,7 +1218,7 @@
           } else {
             // Fin des 7 jours : le client laisse, ou fait vérifier le mandataire.
             node.appendChild(el("p", "flow__note", "Le délai de 7 jours est écoulé (" + wait.label + ") sans validation " + de(first) + "."));
-            node.appendChild(clientChoices(["leave", "verify"]));
+            node.appendChild(clientChoices(expiredChoices(state.step, state.rejections)));
           }
         } else if (state.step === "sent") {
           node = panel("Avez-vous reçu l'argent sur votre compte " + (state.payout ? state.payout.accountName : "") + " ?");
@@ -1253,15 +1281,29 @@
               ? "Le délai de 7 jours est dépassé : répondez maintenant. " + other + " peut laisser, ou vous faire vérifier par l'équipe Mandix."
               : "Vous devez répondre avant le " + pinfo.label + " (encore " + pinfo.left + " jour" + (pinfo.left > 1 ? "s" : "") + ")."));
           }
+          if (rejecting) {
+            // « Rejeté : C'est pas bon ❌ » : la preuve du rejet (capture, document…) est obligatoire.
+            var cancel = el("button", "btn btn--ghost btn--sm flow__cancel", "Annuler");
+            cancel.type = "button";
+            cancel.addEventListener("click", function () { rejecting = false; pendingFiles = []; renderComposer(); });
+            node = multiUploader({
+              title: PROOF_STATUS_TEXT.rejected + " : joignez la preuve du rejet pour " + other,
+              button: "Rejeter et envoyer la preuve",
+              onSend: function (files) { send("proof_status", { status: "rejected", proofId: state.proofId, files: files }); },
+              extra: cancel,
+            });
+            composer.appendChild(node);
+            return;
+          }
           var actions = el("div", "flow__actions");
           actions.appendChild(chip(PROOF_STATUS_TEXT.validated, function () { send("proof_status", { status: "validated", proofId: state.proofId }); }, { className: "flow-chip--validate" }));
-          actions.appendChild(chip(PROOF_STATUS_TEXT.rejected, function () { send("proof_status", { status: "rejected", proofId: state.proofId }); }, { className: "flow-chip--reject" }));
+          actions.appendChild(chip(PROOF_STATUS_TEXT.rejected, function () { rejecting = true; pendingFiles = []; renderComposer(); }, { className: "flow-chip--reject" }));
           if (state.step === "proof_sent") {
             actions.appendChild(chip(PROOF_STATUS_TEXT.pending, function () { send("proof_status", { status: "pending", proofId: state.proofId }); }, { className: "flow-chip--pending" }));
           }
           node.appendChild(actions);
         } else if (state.step === "client_waiting") {
-          // Le client a choisi d'attendre (après plus de 2 rejets) : le paiement peut encore être validé.
+          // Le client a choisi d'attendre (après un rejet) : le paiement peut encore être validé.
           node = el("div", "flow-stack");
           node.appendChild(waiting(other + " attend 7 jours : le paiement reste en cours, non validé."));
           node.appendChild(lateValidation(state, "Le paiement est finalement arrivé ?"));
@@ -1291,7 +1333,9 @@
             idle: events.length ? "En attente d'une nouvelle demande " + de(other) + "…" : "En attente d'une demande " + de(other) + "…",
             amount_asked: other + " indique le montant de la transaction…",
             info_sent: other + " effectue le paiement et vous enverra une preuve…",
-            rejection_choice: other + " choisit : attendre, laisser, ou faire vérifier votre compte…",
+            rejection_choice: state.rejections >= MAX_REJECTIONS
+              ? other + " choisit : attendre, laisser, ou faire vérifier votre compte…"
+              : other + " choisit : attendre, laisser, ou renvoyer sa preuve…",
             payout_asked: other + " choisit son moyen de réception…",
             verification_review: "L'équipe Mandix examine vos preuves du refus. Vous serez notifié du résultat.",
             review_rejected: "Transaction rejetée : " + other + " l'évalue pour la clôturer.",

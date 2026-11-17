@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS mandataire_profiles (
   restricted_until    DATETIME        NULL,
   restriction_reason  ENUM('verification','sanction') NULL,
   restricted_level_count INT UNSIGNED NULL COMMENT 'Transactions réussies au début de la restriction',
+  levels_intro_seen_at DATETIME        NULL COMMENT 'Fenêtre « Comprendre les niveaux » fermée par le mandataire',
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -348,7 +349,7 @@ CREATE TABLE IF NOT EXISTS attachments (
   transaction_id   BIGINT UNSIGNED NOT NULL,
   event_id         BIGINT UNSIGNED NULL COMMENT 'Message auquel le fichier est joint',
   uploaded_by      BIGINT UNSIGNED NOT NULL,
-  kind             ENUM('payment_proof','transfer_proof','credit_evidence') NOT NULL,
+  kind             ENUM('payment_proof','transfer_proof','credit_evidence','rejection_proof') NOT NULL COMMENT 'rejection_proof : preuve jointe par le mandataire à « Rejeté »',
   storage_key      VARCHAR(100) NOT NULL COMMENT 'Nom aléatoire dans storage/private',
   original_name    VARCHAR(255) NOT NULL,
   mime_type        VARCHAR(100) NOT NULL,
@@ -457,6 +458,23 @@ CREATE TABLE IF NOT EXISTS notifications (
   KEY idx_notifications_inbox (user_id, read_at, created_at),
   CONSTRAINT fk_notifications_user  FOREIGN KEY (user_id)       REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Suggestions des clients et des mandataires : ce que l'équipe devrait améliorer ou modifier sur le site.
+-- Visibles uniquement par l'équipe Mandix (espace administrateur, « Suggestions »).
+CREATE TABLE IF NOT EXISTS suggestions (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id      BIGINT UNSIGNED NULL COMMENT 'Auteur (NULL si son compte a été supprimé)',
+  author_role  ENUM('client','mandataire') NOT NULL,
+  topic        ENUM('feature','design','problem','other') NOT NULL DEFAULT 'other',
+  message      VARCHAR(2000) NOT NULL,
+  status       ENUM('new','read','done') NOT NULL DEFAULT 'new' COMMENT 'Suivi par l''équipe',
+  read_at      DATETIME NULL,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_suggestions_status (status, created_at),
+  KEY idx_suggestions_author (user_id, created_at),
+  CONSTRAINT fk_suggestions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

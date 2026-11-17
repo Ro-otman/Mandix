@@ -64,7 +64,10 @@
   </section>
 
   <section class="panel stats-limit" aria-labelledby="limit-title">
-    <h2 class="stats-card__title" id="limit-title">Plafond et certification</h2>
+    <div class="stats-limit__head">
+      <h2 class="stats-card__title" id="limit-title">Plafond et certification</h2>
+      <button class="btn btn--ghost-border btn--sm" type="button" data-modal-open="levels-dialog" aria-haspopup="dialog"><%- icon('circle-help', { size: 15 }) %> Comprendre les niveaux</button>
+    </div>
     <p class="stats-limit__value"><%= limitText %> <span>par transaction · niveau <%= tiers[currentTier].level %></span></p>
     <ol class="tier-list" aria-label="Niveaux de plafond selon le nombre de transactions">
       <% tiers.forEach((t, i) => { const next = tiers[i + 1]; const state = i < currentTier ? 'done' : i === currentTier ? 'current' : 'next'; %>

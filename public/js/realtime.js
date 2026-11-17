@@ -57,7 +57,8 @@
     count = Math.max(0, parseInt(count, 10) || 0);
     document.querySelectorAll('[data-live-badge="' + key + '"]').forEach(function (badge) {
       badge.textContent = count > 99 ? "99+" : String(count);
-      badge.setAttribute("aria-label", count + (key === "verifications" ? " à traiter" : " non lu" + (count > 1 ? "s" : "")));
+      var unit = key === "verifications" ? " à traiter" : key === "suggestions" ? " nouvelle" + (count > 1 ? "s" : "") : " non lu" + (count > 1 ? "s" : "");
+      badge.setAttribute("aria-label", count + unit);
       badge.hidden = !count;
     });
     document.querySelectorAll('[data-live-dot="' + key + '"]').forEach(function (dot) { dot.hidden = !count; });
@@ -71,7 +72,7 @@
    */
   function applyBadges(counts) {
     if (!counts) return;
-    ["messages", "notifications", "verifications"].forEach(function (key) {
+    ["messages", "notifications", "verifications", "suggestions"].forEach(function (key) {
       if (typeof counts[key] === "number") setBadge(key, counts[key]);
     });
   }

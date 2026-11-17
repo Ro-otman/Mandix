@@ -70,7 +70,7 @@ function connect(jar, { origin = base, auth = {} } = {}) {
     socket.on("connect_error", (error) => reject(error));
   });
 }
-const request = (socket, name, payload) => new Promise((resolve) => socket.timeout(5000).emit(name, payload, (err, reply) => resolve(err ? { ok: false, error: "délai" } : reply)));
+const request = (socket, name, payload) => new Promise((resolve) => socket.timeout(10_000).emit(name, payload, (err, reply) => resolve(err ? { ok: false, error: "délai" } : reply)));
 // 10 s : la base MySQL locale peut être lente (une écriture prend parfois plus d'une seconde).
 const nextEvent = (socket, name, timeout = 10_000) => new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error(`événement « ${name} » non reçu`)), timeout);
@@ -473,33 +473,66 @@ test("en attente 7 jours, rappel quotidien, vérification du mandataire, restric
   assert.match(profile.text, /<dt>Rejetées<\/dt>\s*<dd>1<\/dd>/);
 });
 
-test("plus de 2 rejets : Attendre puis Je laisse ; vérification sans preuve sous 72 h", async () => {
+test("rejet avec preuve obligatoire : Attendre / Je laisse / Je renvoie ma preuve, puis Faire vérifier au 2e rejet", async () => {
   const { runFlowDeadlines } = await import("../services/messagingService.js");
   const send = (socket, type, data = {}) => request(socket, "message:send", { conversationId, type, data });
-  const page = await http(clientJar, "GET", "/client/messages/afipro");
-  const csrf = csrfOf(page.text);
+  const clientCsrf = csrfOf((await http(clientJar, "GET", "/client/messages/afipro")).text);
+  const proCsrf = csrfOf((await http(proJar, "GET", `/mandataire/messages/${conversationId}`)).text);
   const status = async () => (await db.query("SELECT status FROM transactions ORDER BY id DESC LIMIT 1"))[0][0].status;
 
-  /** Nouvelle transaction sur le compte PayPal, puis 3 preuves rejetées. */
-  async function threeRejections() {
+  async function startTransaction() {
     assert.ok((await send(clientSocket, "request", { accountId })).ok);
     assert.ok((await send(proSocket, "ask_amount")).ok);
     assert.ok((await send(clientSocket, "amount", { amount: 50, currency: "EUR" })).ok);
     assert.ok((await send(proSocket, "receive_info", { option: "friends_family" })).ok);
-    for (let i = 1; i <= 3; i += 1) {
-      const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", csrf));
-      assert.ok((await send(clientSocket, "proof", { attachmentId: up.data.attachmentId })).ok);
-      const rejected = await send(proSocket, "proof_status", { status: "rejected" });
-      assert.ok(rejected.ok, rejected.error);
-      assert.equal(rejected.event.data.rejections, i);
-      assert.equal(await status(), i <= 2 ? "awaiting_proof" : "rejection_choice", `après le rejet n° ${i}`);
-    }
+  }
+  async function sendProof() {
+    const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", clientCsrf));
+    assert.ok((await send(clientSocket, "proof", { attachmentId: up.data.attachmentId })).ok);
+    assert.equal(await status(), "proof_review");
+  }
+  /** « Rejeté : C'est pas bon ❌ » : refusé sans preuve du rejet, accepté avec. */
+  async function reject(n) {
+    assert.match((await send(proSocket, "proof_status", { status: "rejected" })).error, /preuve du rejet/);
+    const up = await http(proJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("rejection_proof", proCsrf));
+    assert.equal(up.status, 201);
+    const rejected = await send(proSocket, "proof_status", { status: "rejected", attachmentIds: [up.data.attachmentId] });
+    assert.ok(rejected.ok, rejected.error);
+    assert.equal(rejected.event.data.rejections, n);
+    assert.equal(rejected.event.data.files.length, 1, "preuve du rejet jointe au message");
+    assert.equal(await status(), "rejection_choice", `après le rejet n° ${n}`);
+    return rejected;
   }
 
-  // 1. Attendre (7 jours) puis Je laisse ; le mandataire pouvait encore valider pendant l'attente.
-  await threeRejections();
+  // 1er rejet : le client voit la preuve du rejet ; « Faire vérifier » n'est pas encore proposé.
+  await startTransaction();
+  await sendProof();
+  const clientUpload = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("rejection_proof", clientCsrf));
+  assert.equal(clientUpload.status, 403, "seul le mandataire joint une preuve du rejet");
+  const first = await reject(1);
+  const fileUrl = `${base}${first.event.data.files[0].url}`;
+  assert.equal((await fetch(`${fileUrl}?espace=client`, { headers: { cookie: clientJar.header() } })).status, 200, "le client voit la preuve du rejet");
+  assert.notEqual((await fetch(`${fileUrl}?espace=client`, { headers: { cookie: otherJar.header() } })).status, 200, "un autre client ne la voit pas");
+  const [[rejectNote]] = await db.query("SELECT body FROM notifications WHERE type = 'message.proof_status' ORDER BY id DESC LIMIT 1");
+  assert.match(rejectNote.body, /preuve du rejet.*Attendre, Je laisse, ou Je renvoie ma preuve/);
+  assert.match((await send(clientSocket, "client_choice", { choice: "verify" })).error, /Je renvoie ma preuve/);
+
+  // Attendre : au bout de 7 jours, Je laisse ou Je renvoie ma preuve (toujours pas de vérification).
   assert.ok((await send(clientSocket, "client_choice", { choice: "wait" })).ok);
   assert.equal(await status(), "client_waiting");
+  await db.query("UPDATE transactions SET proof_pending_since = UTC_TIMESTAMP() - INTERVAL 8 DAY WHERE status = 'client_waiting'");
+  assert.equal((await runFlowDeadlines()).clientNotices, 1);
+  const [[expiredNote]] = await db.query("SELECT body FROM notifications WHERE type = 'message.pending_expired' ORDER BY id DESC LIMIT 1");
+  assert.match(expiredNote.body, /Je laisse, ou Je renvoie ma preuve/);
+  assert.match((await send(clientSocket, "client_choice", { choice: "verify" })).error, /Je renvoie ma preuve/);
+  assert.ok((await send(clientSocket, "client_choice", { choice: "resend" })).ok);
+  assert.equal(await status(), "awaiting_proof", "le client renvoie sa preuve");
+
+  // 2e rejet : Attendre, Je laisse, Faire vérifier ce mandataire (plus de « Je renvoie ma preuve »).
+  await sendProof();
+  await reject(2);
+  assert.match((await send(clientSocket, "client_choice", { choice: "resend" })).error, /Faire vérifier ce mandataire/);
+  assert.ok((await send(clientSocket, "client_choice", { choice: "wait" })).ok);
   assert.match((await send(clientSocket, "client_choice", { choice: "leave" })).error, /7 jours/);
   await db.query("UPDATE transactions SET proof_pending_since = UTC_TIMESTAMP() - INTERVAL 8 DAY WHERE status = 'client_waiting'");
   assert.equal((await runFlowDeadlines()).clientNotices, 1, "client prévenu à la fin des 7 jours");
@@ -509,10 +542,18 @@ test("plus de 2 rejets : Attendre puis Je laisse ; vérification sans preuve sou
   const [[afterLeave]] = await db.query("SELECT rejected_count FROM mandataire_profiles WHERE slug = 'afipro'");
   assert.equal(afterLeave.rejected_count, 2);
 
-  // 2. Faire vérifier ce mandataire, sans preuve du refus sous 72 h : restriction de 100 jours automatique.
-  await threeRejections();
+  // Faire vérifier au 2e rejet, sans preuve du refus sous 72 h : restriction de 100 jours automatique.
+  await startTransaction();
+  await sendProof();
+  await reject(1);
+  assert.ok((await send(clientSocket, "client_choice", { choice: "resend" })).ok);
+  await sendProof();
+  await reject(2);
   assert.ok((await send(clientSocket, "client_choice", { choice: "verify" })).ok);
   assert.equal(await status(), "verification_requested");
+  // L'équipe voit les preuves jointes aux rejets avec la demande.
+  const adminJar = await login("admin@exemple.com", PASSWORD);
+  assert.match((await http(adminJar, "GET", "/admin/verifications")).text, /Preuves jointes aux rejets/);
   await db.query("UPDATE verification_requests SET evidence_due_at = UTC_TIMESTAMP() - INTERVAL 1 HOUR WHERE status = 'open'");
   const clientHears = nextEvent(clientSocket, "message:new");
   assert.equal((await runFlowDeadlines()).expired, 1);

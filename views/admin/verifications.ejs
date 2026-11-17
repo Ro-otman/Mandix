@@ -1,6 +1,6 @@
 <%#
-  Vérifications de mandataires demandées par les clients (« Faire vérifier ce mandataire »), après plus de 2 preuves
-  rejetées ou 7 jours d'attente. Le mandataire est restreint et envoie les preuves du refus sous 72 h.
+  Vérifications de mandataires demandées par les clients (« Faire vérifier ce mandataire »), au 2e rejet de la preuve
+  ou après 7 jours d'attente. Les preuves jointes à chaque rejet (vues par le client) sont affichées avec la demande. Le mandataire est restreint et envoie les preuves du refus sous 72 h.
   Refus justifié : la restriction est levée. Refus non justifié : restriction de 100 jours (appliquée aussi,
   automatiquement, si aucune preuve n'arrive sous 72 h). Dans tous les cas, la transaction est close (rejetée).
   Locaux : requests (services/adminService.js → listVerifications), pendingMaxDays.
@@ -38,6 +38,22 @@
         <div><dt>Vérification demandée</dt><dd><%= fmt.formatDateTime(r.requestedAt) %></dd></div>
         <% if (r.status === 'open' && r.evidenceDueAt) { %><div><dt>Preuves attendues avant</dt><dd><%= fmt.formatDateTime(r.evidenceDueAt) %></dd></div><% } %>
       </dl>
+      <% if (r.rejectionProofs.length) { %>
+        <div class="verif-card__evidence">
+          <p class="verif-card__role">Preuves jointes aux rejets (vues par le client)</p>
+          <ul class="verif-files">
+            <% r.rejectionProofs.forEach((f) => { %>
+              <li>
+                <% if (f.preview) { %>
+                  <a class="verif-file verif-file--image" href="<%= f.preview %>?espace=admin" target="_blank" rel="noopener"><img src="<%= f.preview %>?espace=admin" alt="Preuve du rejet : <%= f.name %>" loading="lazy"><span><%= f.name %></span></a>
+                <% } else { %>
+                  <a class="verif-file" href="<%= f.url %>?espace=admin" target="_blank" rel="noopener"><%- icon('file-text', { size: 20 }) %><span><%= f.name %><% if (f.size) { %> · <%= Math.round(f.size / 1024) %> Ko<% } %></span></a>
+                <% } %>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      <% } %>
       <div class="verif-card__evidence">
         <p class="verif-card__role">Preuves du refus envoyées par le mandataire</p>
         <% if (!r.evidence.length) { %>

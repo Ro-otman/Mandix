@@ -11,8 +11,10 @@
  * Preuve de paiement : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ », « En attente : Pas encore bon 🔄 ».
  *  - En attente : 7 jours au plus, rappel quotidien au mandataire ; ensuite le client choisit Je laisse ou
  *    Faire vérifier ce mandataire.
- *  - Plus de 2 rejets : le client choisit Attendre (7 jours, puis Je laisse / Faire vérifier), Je laisse, ou
- *    Faire vérifier ce mandataire.
+ *  - Rejeté : le mandataire joint obligatoirement une preuve du rejet (capture, document…), visible par le client.
+ *    1er rejet : le client choisit Attendre (7 jours, puis Je laisse / Je renvoie ma preuve), Je laisse, ou Je
+ *    renvoie ma preuve ; 2e rejet : Attendre (7 jours, puis Je laisse / Faire vérifier), Je laisse, ou Faire
+ *    vérifier ce mandataire.
  *  - Vérification : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix lève la
  *    restriction (refus justifié) ou la prolonge de 100 jours (refus non justifié, ou aucune preuve).
  *    Restreint : plus d'ajout de compte, niveau bloqué.
@@ -36,7 +38,7 @@ import { CERTIFICATION_THRESHOLD } from "../utils/badges.js";
 import { sensitiveReason } from "../utils/sensitive.js";
 import { avatarSvg, defaultAvatarSpec } from "../utils/avatar.js";
 import { presence } from "../utils/presence.js";
-import { eventText, PENDING_MAX_DAYS, MAX_REJECTIONS, VERIFICATION_HOURS, SANCTION_DAYS } from "./chatFlow.js";
+import { eventText, PENDING_MAX_DAYS, MAX_REJECTIONS, VERIFICATION_HOURS, SANCTION_DAYS, rejectionChoices, expiredChoices, choiceList } from "./chatFlow.js";
 import * as notifications from "./notificationService.js";
 import * as files from "./fileService.js";
 import * as hub from "../realtime/hub.js";
@@ -193,7 +195,7 @@ function notificationFor(type, data, { role, conversation }) {
     receive_info: `${name} vous a envoyé ses coordonnées`,
     proof: `Preuve de paiement reçue de ${name}`,
     proof_status: { validated: "Paiement validé", rejected: "Preuve de paiement rejetée", pending: "Paiement en attente" }[data.status],
-    client_choice: { wait: `${name} attend encore 7 jours`, leave: `${name} a laissé la transaction`, verify: `${name} demande la vérification de votre compte` }[data.choice],
+    client_choice: { wait: `${name} attend encore 7 jours`, leave: `${name} a laissé la transaction`, resend: `${name} va renvoyer sa preuve de paiement`, verify: `${name} demande la vérification de votre compte` }[data.choice],
     refusal_proof: `${name} a envoyé les preuves du refus à l'équipe Mandix`,
     ask_payout: `${name} vous demande le moyen de réception`,
     credit_proof_request: `${name} demande une preuve de non-crédit`,
@@ -207,7 +209,9 @@ function notificationFor(type, data, { role, conversation }) {
   if (!titles[type]) return null;
   const body = type === "client_choice" && data.choice === "verify"
     ? `Votre compte est restreint pendant la vérification. Envoyez les preuves du refus dans les ${VERIFICATION_HOURS} heures : sans preuve valable, la restriction dure ${SANCTION_DAYS} jours.`
-    : eventText({ type, data });
+    : type === "proof_status" && data.status === "rejected"
+      ? `${name} a joint la preuve du rejet. Choisissez : ${choiceList(rejectionChoices(Number(data.rejections) || 1))}.`
+      : eventText({ type, data });
   return { title: titles[type], body, link, cta: "Ouvrir la conversation", type: `message.${type}` };
 }
 
@@ -309,30 +313,41 @@ export async function act(user, { conversationId = null, mandataireSlug = null, 
         expect("mandataire", ...allowed);
         const proofEventId = await lastProofEvent(transactionId, connection);
         const [proofFile] = proofEventId ? (await connection.execute("SELECT id FROM attachments WHERE event_id = ? LIMIT 1", [proofEventId]))[0] : [];
-        if (proofFile) await Attachment.decide(proofFile.id, status, connection);
         const rejections = Number(tx.proof_rejections || 0) + (status === "rejected" ? 1 : 0);
+        if (status === "rejected") {
+          // Rejet : preuve obligatoire pour le client (1 à 5 captures ou documents), envoyée avant ce message.
+          const ids = Array.isArray(data.attachmentIds) ? [...new Set(data.attachmentIds.filter(isInt).map(Number))].slice(0, 5) : [];
+          if (!ids.length) fail("Joignez la preuve du rejet (capture, document…).", 422);
+          attachments = await Attachment.findUnlinked(ids, { transactionId, userId: user.id, kind: "rejection_proof" }, connection);
+          if (attachments.length !== ids.length) fail("Une des preuves du rejet est introuvable : envoyez-la de nouveau.", 422);
+        }
+        if (proofFile) await Attachment.decide(proofFile.id, status, connection);
         update = status === "validated" ? { status: "proof_validated", proof_validated_at: "NOW" }
           : status === "rejected"
-            // Au-delà de 2 rejets, le client choisit : Attendre, Je laisse, Faire vérifier ce mandataire.
-            ? { status: rejections > MAX_REJECTIONS ? "rejection_choice" : "awaiting_proof", proof_rejections: "INCREMENT" }
+            // Le client choisit : Attendre, Je laisse, Je renvoie ma preuve (1er rejet) ou Faire vérifier (2e).
+            ? { status: "rejection_choice", proof_rejections: "INCREMENT" }
             : { status: "proof_pending", proof_pending_since: "NOW", pending_reminded_at: null, client_choice_notified_at: null };
         payload = { status, proofId: proofEventId ? String(proofEventId) : null, rejections };
+        if (attachments.length) payload.files = attachments.map(fileView);
         break;
       }
       case "client_choice": {
-        // Après plus de 2 rejets : Attendre / Je laisse / Faire vérifier ce mandataire.
+        // Après un rejet : Attendre / Je laisse / Je renvoie ma preuve (1er) ou Faire vérifier ce mandataire (2e).
         // À la fin des 7 jours (En attente du mandataire, ou Attendre) : Je laisse / Faire vérifier ce mandataire.
         const choice = data.choice;
-        if (!["wait", "leave", "verify"].includes(choice)) fail("Choix inconnu.", 422);
+        if (!["wait", "leave", "resend", "verify"].includes(choice)) fail("Choix inconnu.", 422);
         expect("client", "rejection_choice", "proof_pending", "client_waiting");
+        const rejections = Number(tx.proof_rejections) || 0;
+        const allowed = tx.status === "rejection_choice" ? rejectionChoices(rejections) : expiredChoices(tx.status, rejections);
+        if (!allowed.includes(choice)) fail(`Choisissez : ${choiceList(allowed)}.`, 422);
         if (tx.status !== "rejection_choice") {
-          if (choice === "wait") fail("Choisissez : Je laisse, ou Faire vérifier ce mandataire.", 422);
           const since = tx.proof_pending_since ? new Date(tx.proof_pending_since).getTime() : Date.now();
           if (Date.now() < since + PENDING_MAX_DAYS * DAY_MS) fail("Le délai de 7 jours n'est pas encore écoulé.", 409);
         }
         update = choice === "wait" ? { status: "client_waiting", proof_pending_since: "NOW", pending_reminded_at: null, client_choice_notified_at: null }
           : choice === "leave" ? { status: "awaiting_review", outcome: "rejected" }
-            : { status: "verification_requested" };
+            : choice === "resend" ? { status: "awaiting_proof" }
+              : { status: "verification_requested" };
         payload = { choice };
         break;
       }
@@ -498,6 +513,7 @@ const UPLOAD_RULES = {
   payment_proof: { role: "client", statuses: ["awaiting_proof"] },
   transfer_proof: { role: "mandataire", statuses: ["awaiting_transfer"] },
   credit_evidence: { role: "mandataire", statuses: ["verification_requested"] }, // preuves du refus (vérification)
+  rejection_proof: { role: "mandataire", statuses: ["proof_review", "proof_pending"] }, // jointe à « Rejeté »
 };
 
 /** Fichier envoyé avant le message qui le joint : vérifié, chiffré, rattaché à la transaction en cours. */
@@ -777,9 +793,9 @@ export async function runFlowDeadlines() {
     reminders += 1;
   }
 
-  // 2. Fin des 7 jours (En attente, ou Attendre) : le client peut laisser ou faire vérifier le mandataire.
+  // 2. Fin des 7 jours (En attente, ou Attendre) : le client laisse, renvoie sa preuve ou fait vérifier le mandataire.
   const [due] = await pool.query(
-    `SELECT id, conversation_id FROM transactions
+    `SELECT id, conversation_id, status, proof_rejections FROM transactions
       WHERE status IN ('proof_pending','client_waiting') AND client_choice_notified_at IS NULL
         AND proof_pending_since <= UTC_TIMESTAMP() - INTERVAL ${PENDING_MAX_DAYS} DAY`,
   );
@@ -789,7 +805,7 @@ export async function runFlowDeadlines() {
     await notifications.notify(Number(conversation.client_id), {
       type: "message.pending_expired",
       title: `Délai de ${PENDING_MAX_DAYS} jours écoulé`,
-      body: `Le paiement n'est toujours pas validé par ${conversation.mandataire_pseudo}. Choisissez : Je laisse, ou Faire vérifier ce mandataire.`,
+      body: `Le paiement n'est toujours pas validé par ${conversation.mandataire_pseudo}. Choisissez : ${choiceList(expiredChoices(t.status, Number(t.proof_rejections) || 0))}.`,
       link: `/client/messages/${conversation.mandataire_slug}`,
       cta: "Choisir",
     });

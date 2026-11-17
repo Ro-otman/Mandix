@@ -1,0 +1,52 @@
+<%#
+  Suggestions des clients et des mandataires (visibles uniquement par l'équipe). Onglets par statut, suivi :
+  nouvelle → lue → traitée. Locaux : items (services/suggestionService.js → list), counts, statut, statuses.
+  Le texte est affiché échappé (jamais de HTML), retours à la ligne conservés.
+%>
+<%
+  const TABS = [['new', 'Nouvelles'], ['read', 'Lues'], ['done', 'Traitées'], ['', 'Toutes']];
+  const TONES = { new: 'info', read: 'neutral', done: 'success' };
+  const ROLES = { client: 'Client', mandataire: 'Mandataire' };
+%>
+<%- include('../partials/dash/page-head', { heading: 'Suggestions', sub: 'Ce que les clients et les mandataires aimeraient voir améliorer ou modifier sur le site. Visible uniquement par l’équipe.' }) %>
+
+<nav class="seg sugg-tabs" aria-label="Filtrer les suggestions">
+  <% TABS.forEach(([key, label]) => { const n = key ? counts[key] : counts.all; %>
+    <a class="seg__item <%= key === statut ? 'is-active' : '' %>" href="/admin/suggestions<%= key ? `?statut=${key}` : '' %>" <%- key === statut ? 'aria-current="true"' : '' %>><%= label %> <span class="sugg-tabs__count"><%= n %></span></a>
+  <% }) %>
+</nav>
+
+<% if (!items.length) { %>
+  <section class="panel">
+    <%- include('../partials/empty-state', { emptyIllustration: 'search', emptyTitle: statut === 'new' ? 'Aucune nouvelle suggestion' : 'Aucune suggestion', emptyText: 'Les suggestions envoyées depuis les espaces client et mandataire apparaîtront ici.', emptyAction: null }) %>
+  </section>
+<% } else { %>
+  <ul class="sugg-list">
+    <% items.forEach((s) => { %>
+      <li class="panel sugg <%= s.status === 'new' ? 'is-new' : '' %>">
+        <header class="sugg__head">
+          <div class="sugg__author">
+            <strong>
+              <% if (s.slug) { %><a href="/admin/mandataires/<%= s.slug %>"><%= s.author %></a><% } else { %><%= s.author %><% } %>
+            </strong>
+            <span class="badge badge--neutral"><%= ROLES[s.role] %></span>
+            <% if (s.email) { %><span class="text-muted text-sm"><%= s.email %></span><% } %>
+          </div>
+          <span class="badge badge--<%= TONES[s.status] %>"><%= statuses[s.status] %></span>
+        </header>
+        <p class="sugg__meta"><%- icon('tag', { size: 14 }) %> <%= s.topicLabel %> · <%= fmt.formatDateTime(s.createdAt) %></p>
+        <p class="sugg__message"><%= s.message %></p>
+        <footer class="sugg__actions">
+          <% [['read', 'Marquer comme lue', 'eye'], ['done', 'Marquer comme traitée', 'check-check'], ['new', 'Remettre en nouvelle', 'rotate-ccw']].filter(([key]) => key !== s.status).forEach(([key, label, ic]) => { %>
+            <form method="post" action="/admin/suggestions/<%= s.id %>/statut">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="statut" value="<%= key %>">
+              <% if (statut) { %><input type="hidden" name="retour" value="<%= statut %>"><% } %>
+              <button class="btn <%= key === 'done' ? 'btn--secondary' : 'btn--ghost-border' %> btn--sm" type="submit"><%- icon(ic, { size: 15 }) %> <%= label %></button>
+            </form>
+          <% }) %>
+        </footer>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>

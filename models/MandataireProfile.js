@@ -37,7 +37,7 @@ export const MandataireProfile = {
 MandataireProfile.findByUserId = async function findByUserId(userId) {
   const [rows] = await pool.execute(
     `SELECT id, slug, country_code, bio, languages, transactions_count, rejected_count, rating_avg, rating_count, verified_at, certified_at,
-            restricted_until, restriction_reason, (restricted_until > UTC_TIMESTAMP()) AS restricted,
+            restricted_until, restriction_reason, (restricted_until > UTC_TIMESTAMP()) AS restricted, levels_intro_seen_at,
             CASE WHEN restricted_until > UTC_TIMESTAMP()
                  THEN LEAST(transactions_count, COALESCE(restricted_level_count, transactions_count))
                  ELSE transactions_count END AS level_transactions

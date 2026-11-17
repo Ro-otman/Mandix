@@ -1,0 +1,41 @@
+<%#
+  Formulaire « Suggestions » (espaces client et mandataire). Les suggestions ne sont visibles que par l'équipe
+  Mandix : la page ne présente que le formulaire. Locaux : action, topics ([clé, libellé]), messageMin, messageMax,
+  errors, values.
+%>
+<%
+  const err = (k) => errors && errors[k];
+  const TOPIC_ICONS = { feature: 'sparkles', design: 'palette', problem: 'circle-alert', other: 'message-square-plus' };
+%>
+<%- include('page-head', { heading: 'Suggestions', sub: `Dites-nous ce que l'équipe ${appName} devrait améliorer ou modifier sur le site.` }) %>
+
+<div class="settings-narrow">
+  <form class="panel form-panel suggestion-form" method="post" action="<%= action %>" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <fieldset class="field">
+      <legend class="field__label">Sujet</legend>
+      <div class="choice-grid" <%- err('topic') ? 'aria-describedby="sg-topic-error"' : '' %>>
+        <% topics.forEach(([key, label]) => { %>
+          <label class="choice">
+            <input type="radio" name="topic" value="<%= key %>" required <%= values.topic === key ? 'checked' : '' %>>
+            <span class="choice__icon"><%- icon(TOPIC_ICONS[key] || 'lightbulb', { size: 18 }) %></span>
+            <span class="choice__label"><%= label %></span>
+          </label>
+        <% }) %>
+      </div>
+      <%- include('../field-error', { id: 'sg-topic-error', message: err('topic') }) %>
+    </fieldset>
+
+    <div class="field">
+      <label class="field__label" for="sg-message">Votre suggestion</label>
+      <textarea class="textarea textarea--tall" id="sg-message" name="message" required minlength="<%= messageMin %>" maxlength="<%= messageMax %>"
+                placeholder="Ce que vous aimeriez voir changer, ajouter ou améliorer…" <%- err('message') ? 'aria-invalid="true" aria-describedby="sg-message-error"' : '' %>><%= values.message || '' %></textarea>
+      <%- include('../field-error', { id: 'sg-message-error', message: err('message') }) %>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit" data-busy-label="Envoi…"><%- icon('send', { size: 17 }) %> Envoyer ma suggestion</button>
+    </div>
+  </form>
+</div>

@@ -10,6 +10,7 @@ import mandataireRoutes from "./mandataireRoutes.js";
 import messagingRoutes from "./messagingRoutes.js";
 import clientRoutes from "./clientRoutes.js";
 import adminRoutes from "./adminRoutes.js";
+import suggestionRoutes from "./suggestionRoutes.js";
 import { loadMandataire } from "../middlewares/profile.js";
 import devRoutes from "./devRoutes.js";
 
@@ -24,6 +25,7 @@ router.use(spaceRoutes);
 router.use(mandataireRoutes);
 router.use(clientRoutes);
 router.use(adminRoutes);
+router.use(suggestionRoutes);
 router.use(messagingRoutes);
 
 export default router;

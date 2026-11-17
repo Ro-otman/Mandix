@@ -7,9 +7,11 @@
  *   4. mandataire : ses coordonnées de réception pour le compte choisi ; PayPal : type d'envoi
  *      (Amis et proches / Biens et services) ; virement : mode (instantané / classique)
  *   5. client : preuve de paiement (image ou PDF)
- *   6. mandataire : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ » (le client renvoie une preuve),
- *      ou « En attente : Pas encore bon 🔄 » (7 jours au plus, rappel quotidien au mandataire).
- *      - Plus de 2 rejets : le client choisit Attendre (7 jours), Je laisse, ou Faire vérifier ce mandataire.
+ *   6. mandataire : « Valide : C'est bon ✅ », « Rejeté : C'est pas bon ❌ » (avec, obligatoirement, une preuve du
+ *      rejet pour le client : capture, document…), ou « En attente : Pas encore bon 🔄 » (7 jours au plus, rappel
+ *      quotidien au mandataire).
+ *      - 1er rejet : le client choisit Attendre (7 jours), Je laisse, ou Je renvoie ma preuve.
+ *      - 2e rejet : le client choisit Attendre (7 jours), Je laisse, ou Faire vérifier ce mandataire.
  *      - Fin des 7 jours (En attente, ou Attendre) : le client choisit Je laisse, ou Faire vérifier ce mandataire.
  *      - Faire vérifier : le mandataire est restreint et envoie les preuves du refus sous 72 h ; l'équipe Mandix
  *        lève la restriction (refus justifié) ou la prolonge de 100 jours ; la transaction est rejetée.
@@ -41,8 +43,26 @@ export const DEMO_PRO_SLUG = "afiavi-houngbedji";
 
 /** Délai maximum d'un paiement « En attente » (ou de l'attente choisie par le client) : 7 jours. */
 export const PENDING_MAX_DAYS = 7;
-/** Au-delà de ce nombre de preuves rejetées, le client choisit : Attendre, Je laisse, Faire vérifier ce mandataire. */
+/**
+ * Rejets d'une même transaction : après le 1er, le client peut renvoyer sa preuve (Attendre, Je laisse, Je renvoie
+ * ma preuve) ; au 2e, « Je renvoie ma preuve » laisse la place à « Faire vérifier ce mandataire ».
+ */
 export const MAX_REJECTIONS = 2;
+/** Choix proposés au client après le rejet n° `rejections`. */
+export const rejectionChoices = (rejections) => (rejections >= MAX_REJECTIONS ? ["wait", "leave", "verify"] : ["wait", "leave", "resend"]);
+/**
+ * Fin des 7 jours sans validation : Je laisse, et Je renvoie ma preuve (attente choisie après le 1er rejet)
+ * ou Faire vérifier ce mandataire (paiement laissé « En attente » par le mandataire, ou attente après le 2e rejet).
+ */
+export const expiredChoices = (status, rejections) =>
+  (status === "client_waiting" && rejections < MAX_REJECTIONS ? ["leave", "resend"] : ["leave", "verify"]);
+/** Libellés des boutons de choix du client. */
+export const CHOICE_LABELS = { wait: "Attendre", leave: "Je laisse", resend: "Je renvoie ma preuve", verify: "Faire vérifier ce mandataire" };
+/** « Attendre, Je laisse, ou Je renvoie ma preuve » */
+export const choiceList = (keys) => {
+  const labels = keys.map((k) => CHOICE_LABELS[k]);
+  return labels.length > 1 ? `${labels.slice(0, -1).join(", ")}, ou ${labels[labels.length - 1]}` : labels.join("");
+};
 /** Vérification du mandataire : 72 heures au plus pour envoyer les preuves du refus. */
 export const VERIFICATION_HOURS = 72;
 /** Restriction d'un mandataire dont le refus n'est pas justifié (ou sans preuve) : 100 jours. */
@@ -55,10 +75,11 @@ export const PROOF_STATUS_TEXT = {
   pending: "En attente : Pas encore bon 🔄",
 };
 
-/** Choix du client après plus de 2 rejets, ou à la fin des 7 jours d'attente. */
+/** Choix du client après un rejet, ou à la fin des 7 jours d'attente. */
 export const CLIENT_CHOICE_TEXT = {
   wait: "J'attends : le paiement reste en cours, non validé, pendant 7 jours.",
   leave: "Je laisse : je confirme que ce n'est pas bon. La transaction s'arrête.",
+  resend: "Je renvoie ma preuve de paiement.",
   verify: "Je fais vérifier ce mandataire par l'équipe Mandix.",
 };
 
