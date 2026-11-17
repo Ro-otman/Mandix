@@ -673,3 +673,52 @@ test("transaction rejetée et évaluée : plus de formulaire d'évaluation au re
   const opened = await request(tab, "message:send", { conversationId, type: "request", data: { accountId } });
   assert.ok(opened.ok, opened.error);
 });
+
+test("séquence réelle : renvoi, attentes, 5 rejets puis « Faire vérifier ce mandataire » → restriction active", async () => {
+  const clientTab = await connect(clientJar, { auth: { space: "client" } });
+  const proTab = await connect(proJar, { auth: { space: "mandataire" } });
+  const send = (socket, type, data = {}) => request(socket, "message:send", { conversationId, type, data });
+  const clientCsrf = csrfOf((await http(clientJar, "GET", "/client/messages/afipro")).text);
+  const proCsrf = csrfOf((await http(proJar, "GET", `/mandataire/messages/${conversationId}`)).text);
+  const proof = async () => {
+    const up = await http(clientJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("payment_proof", clientCsrf));
+    const sent = await send(clientTab, "proof", { attachmentId: up.data.attachmentId });
+    assert.ok(sent.ok, sent.error);
+  };
+  const reject = async (n) => {
+    const up = await http(proJar, "POST", `/api/conversations/${conversationId}/fichiers`, pngForm("rejection_proof", proCsrf));
+    assert.equal(up.status, 201, up.text);
+    const r = await send(proTab, "proof_status", { status: "rejected", attachmentIds: [up.data.attachmentId] });
+    assert.ok(r.ok, `rejet n° ${n} : ${r.error}`);
+    assert.equal(r.event.data.rejections, n);
+  };
+  const choose = async (choice) => { const r = await send(clientTab, "client_choice", { choice }); assert.ok(r.ok, `${choice} : ${r.error}`); return r; };
+
+  // Mandataire sans restriction au départ (les tests précédents ont pu en laisser une)
+  await db.query("UPDATE mandataire_profiles SET restricted_until = NULL, restriction_reason = NULL, restricted_level_count = NULL WHERE slug = 'afipro'");
+  // Le test précédent a ouvert une nouvelle demande : on poursuit celle-ci, sinon on en ouvre une.
+  const opened = await send(clientTab, "request", { accountId });
+  if (!opened.ok) assert.match(opened.error, /déjà en cours/);
+  const [[open]] = await db.query("SELECT status FROM transactions ORDER BY id DESC LIMIT 1");
+  assert.equal(open.status, "requested");
+  assert.ok((await send(proTab, "ask_amount")).ok);
+  assert.ok((await send(clientTab, "amount", { amount: 30, currency: "EUR" })).ok);
+  assert.ok((await send(proTab, "receive_info", { option: "friends_family" })).ok);
+  await proof();
+  await reject(1); await choose("resend"); await proof();
+  await reject(2); await choose("wait");
+  await reject(3); await choose("wait");
+  await reject(4); await choose("wait");
+  await reject(5);
+  const verify = await choose("verify");
+  assert.equal(verify.status, "verification_requested");
+  const [[vr]] = await db.query("SELECT status FROM verification_requests ORDER BY id DESC LIMIT 1");
+  assert.equal(vr.status, "open");
+  const [[mp]] = await db.query("SELECT restricted_until > UTC_TIMESTAMP() AS active, restriction_reason FROM mandataire_profiles WHERE slug = 'afipro'");
+  assert.equal(Number(mp.active), 1, "restriction active");
+  assert.equal(mp.restriction_reason, "verification");
+  // Connexions de l'application : classement des tables (sur MariaDB, un mélange faisait échouer la restriction)
+  const appPool = (await import("../config/database.js")).default;
+  const [[names]] = await appPool.query("SELECT @@collation_connection AS c");
+  assert.equal(names.c, "utf8mb4_unicode_ci");
+});

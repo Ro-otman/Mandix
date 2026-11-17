@@ -1,7 +1,8 @@
 /**
  * Connexion temps réel des espaces connectés (socket.io, même site, cookies HttpOnly) :
  *  - MC.realtime.request(nom, données) → Promise : action avec accusé de réception (messages, lecture…) ;
- *  - notifications reçues en direct : toast, compteurs du menu et de la barre du haut, sonnerie (sound.js) ;
+ *  - notifications reçues en direct : toast, compteurs du menu et de la barre du haut, notification du navigateur
+ *    avec son du système (browser-notifications.js) ;
  *  - aperçus de la liste des conversations mis à jour en direct.
  * Jeton d'accès expiré : renouvelé via /api/session (le jeton de rafraîchissement agit), puis reconnexion.
  */
@@ -110,7 +111,9 @@
     setBadge("notifications", payload.unread || 0);
     refreshNotificationFeeds(); // la nouvelle notification apparaît dans la liste affichée
     if (MC.toast) MC.toast(n.body || n.title, "info", n.title);
-    if (MC.sound) MC.sound.play("notification"); // un seul son si un message vient de sonner
+    // Notification du navigateur (avec son du système). Même étiquette que le message de la même conversation :
+    // elle le remplace sans sonner une seconde fois.
+    if (MC.browserNotify) MC.browserNotify({ title: n.title, body: n.body, link: n.link, tag: n.link || "notification:" + n.id });
   });
   socket.on("notification:read", function (payload) {
     var unread = (payload && payload.unread) || 0;
@@ -151,8 +154,12 @@
     var activeRoot = document.querySelector("[data-chat-root]");
     var isOpen = activeRoot && activeRoot.getAttribute("data-conversation-id") === update.conversationId;
     var mine = update.preview && update.preview.indexOf("Vous : ") === 0;
-    // Nouveau message de l'autre participant : sonnerie, sauf si la conversation est ouverte sous les yeux.
-    if (!mine && MC.sound && !(isOpen && document.visibilityState === "visible")) MC.sound.play("message");
+    // Nouveau message de l'autre participant : notification du navigateur (avec son du système), sauf si la
+    // conversation est ouverte sous les yeux.
+    if (!mine && MC.browserNotify && !(isOpen && document.visibilityState === "visible")) {
+      var link = space ? "/" + space + "/messages/" + update.slug : null;
+      MC.browserNotify({ title: "Nouveau message", body: update.preview, link: link, tag: link || "conversation:" + update.conversationId });
+    }
     var known = document.querySelectorAll('[data-chat-item][data-chat-key="' + update.key + '"]');
     // Nouvelle conversation : la liste affichée est rechargée (même rendu que le serveur).
     if (!known.length) refreshLists();

@@ -95,10 +95,10 @@ export async function counts() {
 /** L'équipe marque une suggestion comme lue, traitée, ou de nouveau à lire. */
 export async function setStatus(admin, id, status, { ip = null, userAgent = null } = {}) {
   if (!Object.hasOwn(SUGGESTION_STATUSES, status) || !/^\d{1,18}$/.test(String(id))) return { ok: false, error: "Action inconnue." };
-  const [result] = await pool.execute(
-    "UPDATE suggestions SET status = ?, read_at = CASE WHEN ? = 'new' THEN NULL ELSE COALESCE(read_at, UTC_TIMESTAMP()) END WHERE id = ?",
-    [status, status, Number(id)],
-  );
+  // « De nouveau à lire » efface la date de lecture ; sinon elle est posée une fois (choix fait ici, pas par une
+  // comparaison « ? = 'new' » dans la requête, refusée par MariaDB : mélange de classements).
+  const readAt = status === "new" ? "NULL" : "COALESCE(read_at, UTC_TIMESTAMP())";
+  const [result] = await pool.execute(`UPDATE suggestions SET status = ?, read_at = ${readAt} WHERE id = ?`, [status, Number(id)]);
   if (!result.affectedRows) return { ok: false, error: "Suggestion introuvable." };
   await AuditLog.record({ actorUserId: admin.id, actorRole: "admin", action: `suggestion.${status}`, entityType: "suggestion", entityId: Number(id), ip, userAgent });
   await pushAdminBadges();

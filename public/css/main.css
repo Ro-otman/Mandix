@@ -446,11 +446,3 @@ html.theme-switching *::after { transition: background-color 0.25s ease, color 0
 :root[data-theme="dark"] .theme-toggle__icon--moon { opacity: 0; transform: rotate(90deg) scale(0.6); }
 :root[data-theme="dark"] .theme-toggle__icon--sun { opacity: 1; transform: none; color: var(--gold-500); }
 @media (prefers-reduced-motion: reduce) { .theme-toggle__icon { transition: none; } }
-
-/* Bouton « son des notifications » (partials/sound-toggle.ejs, public/js/sound.js) : même forme que le mode nuit */
-.sound-toggle__icon { grid-area: 1 / 1; display: grid; place-items: center; transition: transform 0.25s ease, opacity 0.2s ease; }
-.sound-toggle__icon--off { opacity: 0; transform: scale(0.6); }
-.sound-toggle.is-muted { color: var(--color-text-muted); }
-.sound-toggle.is-muted .sound-toggle__icon--on { opacity: 0; transform: scale(0.6); }
-.sound-toggle.is-muted .sound-toggle__icon--off { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) { .sound-toggle__icon { transition: none; } }

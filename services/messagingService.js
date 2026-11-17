@@ -162,15 +162,18 @@ function readPayoutFields(method, raw) {
  */
 async function restrictMandataire(connection, mandataireId, { hours = 0, days = 0, reason }) {
   const interval = days ? `INTERVAL ${Number(days)} DAY` : `INTERVAL ${Number(hours)} HOUR`;
+  // Motif décidé ici plutôt que par une comparaison « ? = 'sanction' » dans la requête (refusée par MariaDB :
+  // mélange de classements entre la valeur envoyée et le texte de la requête).
+  const reasonSql = reason === "sanction"
+    ? "'sanction'"
+    : "IF(restriction_reason = 'sanction' AND restricted_until > UTC_TIMESTAMP(), 'sanction', 'verification')";
   await connection.execute(
     `UPDATE mandataire_profiles
         SET restricted_level_count = IF(restricted_until > UTC_TIMESTAMP(), restricted_level_count, transactions_count),
-            restriction_reason = CASE WHEN ? = 'sanction' THEN 'sanction'
-                                      WHEN restriction_reason = 'sanction' AND restricted_until > UTC_TIMESTAMP() THEN 'sanction'
-                                      ELSE 'verification' END,
+            restriction_reason = ${reasonSql},
             restricted_until = GREATEST(COALESCE(restricted_until, UTC_TIMESTAMP()), UTC_TIMESTAMP() + ${interval})
       WHERE id = ?`,
-    [reason, mandataireId],
+    [mandataireId],
   );
 }
 

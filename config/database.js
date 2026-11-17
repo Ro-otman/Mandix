@@ -10,15 +10,17 @@ const pool = mysql.createPool({
   ...config.db,
   waitForConnections: true,
   queueLimit: 0,
-  charset: "utf8mb4",
+  charset: "utf8mb4_unicode_ci", // même classement que les tables (MariaDB refuse les mélanges de classements)
   timezone: "Z",
   supportBigNumbers: true,
   namedPlaceholders: false,
 });
 
-// Chaque connexion travaille en UTC : CURRENT_TIMESTAMP et les DATETIME restent cohérents
-// quel que soit le fuseau du serveur MySQL.
+// Chaque connexion travaille en UTC : CURRENT_TIMESTAMP et les DATETIME restent cohérents quel que soit le fuseau
+// du serveur. Classement utf8mb4_unicode_ci, celui des tables : sur MariaDB, comparer une valeur envoyée par
+// l'application à un texte de la requête échouait sinon (« Illegal mix of collations »).
 pool.pool.on("connection", (connection) => {
+  connection.query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
   connection.query("SET time_zone = '+00:00'");
 });
 
