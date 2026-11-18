@@ -54,8 +54,8 @@
         <button class="btn btn--primary btn--block" type="submit"><%- icon('send', { size: 17 }) %> Envoyer</button>
       </form>
       <div class="contact-info">
-        <p><%- icon('mail', { size: 16 }) %> <span>support@mandix.bj <span class="text-muted">(adresse provisoire)</span></span></p>
-        <p><%- icon('clock-3', { size: 16 }) %> <span>Du lundi au vendredi, 8 h – 18 h</span></p>
+        <p><%- icon('mail', { size: 16 }) %> <a href="mailto:<%= contact.email %>"><%= contact.email %></a></p>
+        <p><%- icon('clock-3', { size: 16 }) %> <span><%= contact.hours %></span></p>
         <p><%- icon('globe', { size: 16 }) %> <span>Service disponible dans de nombreux pays</span></p>
       </div>
     </aside>

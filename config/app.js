@@ -35,6 +35,8 @@ const config = Object.freeze({
   rootDir,
   port: Number(process.env.PORT) || 3000,
   appName: "Mandix",
+  // Contact affiché sur le centre d'aide et les pages légales (un seul endroit à modifier).
+  contact: { email: "mandixcontact@gmail.com", hours: "Ouvert 24 h sur 24" },
   baseUrl: process.env.APP_BASE_URL || `http://localhost:${Number(process.env.PORT) || 3000}`,
   trustProxy: process.env.TRUST_PROXY === "true",
   // Profils fictifs pour concevoir le design. Toujours désactivé en production.

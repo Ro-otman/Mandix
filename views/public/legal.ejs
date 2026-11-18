@@ -17,5 +17,10 @@
         </p>
       </div>
     </div>
+    <p class="legal-contact">
+      <%- icon('mail', { size: 16 }) %>
+      Une question sur ce document ou sur vos données personnelles ? Écrivez-nous à
+      <a href="mailto:<%= contact.email %>"><%= contact.email %></a> (<%= contact.hours.toLowerCase() %>).
+    </p>
   </div>
 </section>

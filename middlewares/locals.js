@@ -12,6 +12,7 @@ import { publicMenu, dashboardMenus, roleLabels } from "../config/navigation.js"
 
 export function viewLocals(req, res, next) {
   res.locals.appName = config.appName;
+  res.locals.contact = config.contact; // e-mail et horaires du support
   res.locals.currentPath = req.path;
   res.locals.isProduction = config.isProduction;
   res.locals.isDemo = config.demoContent;

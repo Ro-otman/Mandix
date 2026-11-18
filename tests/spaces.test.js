@@ -438,3 +438,13 @@ test("en-tête du site : menu à droite une fois connecté", async () => {
   assert.doesNotMatch((await http(new CookieJar(), "GET", "/")).text, /navbar--signed-in/, "visiteur : menu à côté du logo");
   assert.match((await http(await login("momo@exemple.com"), "GET", "/")).text, /class="navbar navbar--signed-in"/);
 });
+
+test("contact : la vraie adresse et les horaires sur le centre d'aide et les pages légales", async () => {
+  for (const page of ["/aide", "/conditions-utilisation", "/confidentialite"]) {
+    const res = await http(new CookieJar(), "GET", page);
+    assert.equal(res.status, 200, page);
+    assert.match(res.text, /href="mailto:mandixcontact@gmail\.com"/, page);
+    assert.match(res.text, /24 h sur 24/i, page);
+    assert.doesNotMatch(res.text, /support@mandix\.bj|adresse provisoire/, page);
+  }
+});
