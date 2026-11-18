@@ -448,3 +448,17 @@ test("contact : la vraie adresse et les horaires sur le centre d'aide et les pag
     assert.doesNotMatch(res.text, /support@mandix\.bj|adresse provisoire/, page);
   }
 });
+
+test("pages légales : textes complets, plus d'encadré « en cours de rédaction »", async () => {
+  const terms = await http(new CookieJar(), "GET", "/conditions-utilisation");
+  const privacy = await http(new CookieJar(), "GET", "/confidentialite");
+  for (const page of [terms, privacy]) {
+    assert.equal(page.status, 200);
+    assert.doesNotMatch(page.text, /en cours de rédaction|en cours de préparation/);
+    assert.match(page.text, /Dernière mise à jour/);
+  }
+  assert.match(terms.text, /ne détient, ne reçoit ni ne transfère aucun fonds/);
+  assert.match(terms.text, /ne demande et ne contrôle aucun document/);
+  assert.match(privacy.text, /Durées de conservation/);
+  assert.match(privacy.text, /Effacés 10 jours après la clôture/);
+});

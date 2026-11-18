@@ -1,3 +1,4 @@
+<%# Pages légales : conditions d'utilisation, politique de confidentialité. Texte dans views/public/legal/<page>.ejs. Locaux : title, page. %>
 <section class="page-hero">
   <div class="container">
     <h1 data-hero-item><%= title %></h1>
@@ -5,22 +6,7 @@
 </section>
 
 <section class="section">
-  <div class="container prose">
-    <div class="alert alert--warning">
-      <%- icon('triangle-alert', { size: 18 }) %>
-      <div>
-        <p class="alert__title">Document en cours de rédaction</p>
-        <p>
-          Ce document est en cours de préparation et doit être validé par un conseil juridique avant l'ouverture
-          du service au public, au regard de la réglementation de chaque pays où la plateforme est disponible
-          (protection des données personnelles, intermédiation et démarchage bancaires).
-        </p>
-      </div>
-    </div>
-    <p class="legal-contact">
-      <%- icon('mail', { size: 16 }) %>
-      Une question sur ce document ou sur vos données personnelles ? Écrivez-nous à
-      <a href="mailto:<%= contact.email %>"><%= contact.email %></a> (<%= contact.hours.toLowerCase() %>).
-    </p>
+  <div class="container prose legal">
+    <%- include(`legal/${page}`) %>
   </div>
 </section>

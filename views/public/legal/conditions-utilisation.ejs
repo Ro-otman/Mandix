@@ -1,0 +1,67 @@
+<%# Conditions d'utilisation. Fidèles au fonctionnement réel de la plateforme (messagerie guidée, niveaux, vérification, restrictions). %>
+<p class="legal-updated">Dernière mise à jour : 18 novembre 2026</p>
+
+<p>Ces conditions encadrent l'utilisation de <%= appName %> : le site, l'espace client et l'espace mandataire. En créant un compte, vous les acceptez.</p>
+
+<h2>1. Ce que fait <%= appName %></h2>
+<p><%= appName %> met en relation des clients et des mandataires. Un mandataire est un particulier ou un professionnel qui détient un compte de paiement ou de transfert (PayPal, Wise, Mobile Money, virement, crypto…) et propose de faire une transaction avec ce compte.</p>
+<p><strong><%= appName %> ne détient, ne reçoit ni ne transfère aucun fonds.</strong> L'argent passe directement entre le client et le mandataire, sur les comptes qu'ils s'indiquent dans la conversation. <%= appName %> n'est ni une banque ni un établissement de paiement, et ne gère aucun compte pour ses utilisateurs.</p>
+<p><%= appName %> n'est affilié à aucun des services cités sur le site, et les mandataires ne les représentent pas. Les marques appartiennent à leurs propriétaires.</p>
+
+<h2>2. Votre compte</h2>
+<ul>
+  <li>Vous vous inscrivez avec un pseudo, une adresse e-mail et un mot de passe, puis vous confirmez votre adresse. Une adresse e-mail correspond à un seul compte, client ou mandataire.</li>
+  <li>Vous devez être majeur selon la loi de votre pays et donner des informations exactes.</li>
+  <li>Vous gardez votre mot de passe secret : les actions faites depuis votre compte sont réputées faites par vous.</li>
+</ul>
+
+<h2>3. Les mandataires</h2>
+<ul>
+  <li>Le mandataire publie ses comptes : type, pays, devise, et s'il le souhaite ses tarifs (pourcentage, prix sur 100) et ses coordonnées de réception. Les tarifs sont fixés par chaque mandataire et affichés sur son profil.</li>
+  <li><%= appName %> ne demande et ne contrôle aucun document d'identité ni justificatif des mandataires. Le badge de certification indique seulement que le mandataire a réussi 1 000 transactions sur la plateforme.</li>
+  <li>Le montant d'une transaction est plafonné selon le niveau du mandataire, qui dépend du nombre de transactions réussies : de 200 € au niveau 1 à plus de 10 000 € au niveau 10. Les transactions rejetées ne comptent pas.</li>
+  <li>Le mandataire s'engage à répondre de bonne foi, à joindre une preuve à chaque rejet, et à envoyer l'argent promis avec la capture du transfert.</li>
+</ul>
+
+<h2>4. Le déroulement d'une transaction</h2>
+<p>Tout se passe dans une messagerie guidée, avec des messages prédéfinis : seuls le montant et les coordonnées de réception se saisissent.</p>
+<ol>
+  <li>Le client choisit un compte du mandataire et indique le montant, contrôlé par rapport au plafond.</li>
+  <li>Le mandataire envoie ses coordonnées ; le client paie et envoie sa preuve de paiement.</li>
+  <li>Le mandataire répond : « Valide », « Rejeté » (avec une preuve du rejet, obligatoire) ou « En attente » (7 jours au plus).</li>
+  <li>Après un rejet, le client choisit : attendre 7 jours, laisser la transaction, renvoyer sa preuve (1er rejet) ou faire vérifier le mandataire (à partir du 2e rejet).</li>
+  <li>Paiement validé : le client indique son moyen de réception, le mandataire envoie l'argent avec la capture du transfert, le client confirme la réception.</li>
+  <li>Le client évalue la transaction, qu'elle ait réussi ou non : cette évaluation est obligatoire et la clôture.</li>
+</ol>
+
+<h2>5. Vérification et restrictions</h2>
+<p>Quand un client fait vérifier un mandataire, le compte du mandataire est aussitôt restreint : il ne peut plus ajouter de compte et son niveau est bloqué. Il doit envoyer les preuves de son refus dans les 72 heures.</p>
+<p>L'équipe <%= appName %> examine les preuves échangées sur la plateforme. Refus justifié : la restriction est levée. Refus non justifié, ou aucune preuve dans les 72 heures : la restriction dure 100 jours. Dans tous les cas, la transaction est close.</p>
+<p><%= appName %> ne détenant aucun fonds, il ne peut ni récupérer ni rembourser une somme versée entre utilisateurs.</p>
+
+<h2>6. Ce qui est interdit</h2>
+<ul>
+  <li>Demander ou communiquer un mot de passe, un code secret, un numéro de carte ou une phrase de récupération : la plateforme les refuse, et <%= appName %> ne les demandera jamais.</li>
+  <li>Envoyer une fausse preuve, une capture modifiée, ou se faire passer pour quelqu'un d'autre.</li>
+  <li>Utiliser <%= appName %> pour une fraude, du blanchiment d'argent ou toute activité illégale dans votre pays.</li>
+  <li>Harceler ou menacer un autre utilisateur.</li>
+</ul>
+<p>L'équipe <%= appName %> peut suspendre un compte qui ne respecte pas ces règles ; ses connexions sont alors fermées.</p>
+
+<h2>7. Profil public et évaluations</h2>
+<p>Le profil d'un mandataire montre son pseudo, sa présentation, ses langues, son pays s'il l'indique, ses comptes et tarifs, son niveau, sa note moyenne et ses transactions réussies et rejetées. Une évaluation se compose d'une note de 1 à 5 et d'une appréciation préfaite ; elle n'apparaît pas dans la conversation.</p>
+
+<h2>8. Messages et fichiers</h2>
+<p>Les messages et les fichiers sont chiffrés. Ils sont effacés 10 jours après la clôture de la transaction ; la transaction elle-même est conservée, sans les coordonnées de réception, pour les niveaux et les statistiques.</p>
+
+<h2>9. Suppression du compte</h2>
+<p>Un client peut supprimer son compte depuis ses paramètres ; un mandataire en fait la demande par e-mail. La suppression est impossible pendant une transaction en cours. Vos données personnelles sont alors anonymisées et vos comptes retirés ; l'historique des transactions reste, de façon anonyme.</p>
+
+<h2>10. Responsabilité</h2>
+<p><%= appName %> fournit un outil de mise en relation et d'encadrement des échanges. Il n'est pas partie aux transactions et n'en garantit pas l'issue. Chaque utilisateur reste responsable des transactions qu'il réalise et du respect des règles de son pays, notamment en matière de change et de fiscalité. Le service peut être interrompu pour maintenance.</p>
+
+<h2>11. Modifications</h2>
+<p>Ces conditions peuvent évoluer. La date en haut de cette page indique la version en vigueur.</p>
+
+<h2>12. Contact</h2>
+<p>Pour toute question : <a href="mailto:<%= contact.email %>"><%= contact.email %></a> (<%= contact.hours.toLowerCase() %>).</p>

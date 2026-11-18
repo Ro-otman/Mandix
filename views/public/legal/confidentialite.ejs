@@ -1,0 +1,77 @@
+<%# Politique de confidentialité. Fidèle aux données réellement collectées, aux durées appliquées par l'application et aux cookies posés. %>
+<p class="legal-updated">Dernière mise à jour : 18 novembre 2026</p>
+
+<p>Cette politique explique quelles données <%= appName %> collecte, pourquoi, combien de temps elles sont gardées et comment exercer vos droits. <%= appName %> ne vend aucune donnée et n'affiche aucune publicité.</p>
+
+<h2>1. Les données collectées</h2>
+<div class="legal-table">
+  <table>
+    <thead><tr><th scope="col">Données</th><th scope="col">Pourquoi</th></tr></thead>
+    <tbody>
+      <tr><td>Pseudo, adresse e-mail, mot de passe, type de compte</td><td>Créer et protéger votre compte, vous envoyer les e-mails de confirmation et de réinitialisation. Le mot de passe n'est jamais enregistré en clair (empreinte Argon2id).</td></tr>
+      <tr><td>Profil du mandataire : présentation, langues, pays (facultatif), comptes publiés, tarifs</td><td>Afficher sa fiche et le faire apparaître dans la recherche.</td></tr>
+      <tr><td>Coordonnées de réception : e-mail, RIB, BIC, adresse, nom du titulaire, numéro Mobile Money…</td><td>Permettre le paiement entre le client et le mandataire. Elles sont chiffrées.</td></tr>
+      <tr><td>Messages et fichiers : preuves de paiement, preuves de rejet, captures de transfert</td><td>Le déroulement de la transaction, et l'examen par l'équipe en cas de vérification. Ils sont chiffrés.</td></tr>
+      <tr><td>Transactions : montant, devise, statut, dates ; évaluations</td><td>Le plafond et le niveau des mandataires, leur note et leurs statistiques.</td></tr>
+      <tr><td>Suggestions envoyées</td><td>Améliorer le site.</td></tr>
+      <tr><td>Données techniques : adresse IP, navigateur, connexions et tentatives de connexion, actions sensibles, dernière présence</td><td>La sécurité, la prévention de la fraude, et l'indication « En ligne ».</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><%= appName %> ne demande jamais de numéro de carte, de mot de passe de compte de paiement, de code secret ni de phrase de récupération : la plateforme les refuse.</p>
+
+<h2>2. Qui voit vos données</h2>
+<ul>
+  <li><strong>Tout le monde</strong> : le profil public d'un mandataire (pseudo, présentation, langues, pays, comptes, tarifs, niveau, note). Votre adresse e-mail n'est jamais publique.</li>
+  <li><strong>L'autre participant</strong> d'une conversation : les messages, les fichiers et les coordonnées de réception envoyés dans cette conversation.</li>
+  <li><strong>L'équipe <%= appName %></strong> : les comptes et leur activité, les demandes de vérification et leurs preuves, les suggestions, pour la modération et le traitement des litiges.</li>
+  <li><strong>Nos prestataires techniques</strong> : Hostinger, qui héberge le site et la base de données, et Google (Gmail), qui achemine les e-mails du site.</li>
+</ul>
+
+<h2>3. Durées de conservation</h2>
+<div class="legal-table">
+  <table>
+    <thead><tr><th scope="col">Données</th><th scope="col">Durée</th></tr></thead>
+    <tbody>
+      <tr><td>Messages et fichiers d'une transaction, coordonnées de réception du client</td><td>Effacés 10 jours après la clôture de la transaction</td></tr>
+      <tr><td>Notifications lues</td><td>30 jours après leur lecture</td></tr>
+      <tr><td>Tentatives de connexion</td><td>90 jours</td></tr>
+      <tr><td>Sessions de connexion</td><td>Jusqu'à 30 jours après leur expiration</td></tr>
+      <tr><td>Transactions et évaluations</td><td>Conservées, sans coordonnées de réception, pour les niveaux et les statistiques</td></tr>
+      <tr><td>Compte</td><td>Jusqu'à sa suppression, puis anonymisé</td></tr>
+      <tr><td>Journal des actions sensibles</td><td>Conservé, non modifiable, pour la sécurité et la traçabilité</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>4. Sécurité</h2>
+<p>Le site est servi en HTTPS. Les messages, les fichiers et les coordonnées de réception sont chiffrés (AES-256-GCM) ; les fichiers ne sont jamais publics et ne s'ouvrent que pour les participants de la conversation et l'équipe. Après 5 échecs de connexion, l'accès au compte est bloqué 15 minutes.</p>
+
+<h2>5. Cookies et stockage sur votre appareil</h2>
+<p><%= appName %> n'utilise que les cookies nécessaires au fonctionnement du site : aucun cookie publicitaire ni de mesure d'audience.</p>
+<div class="legal-table">
+  <table>
+    <thead><tr><th scope="col">Cookie</th><th scope="col">Rôle</th><th scope="col">Durée</th></tr></thead>
+    <tbody>
+      <tr><td>mandix.at.…</td><td>Vous garder connecté à un espace (client, mandataire, administration)</td><td>15 minutes, renouvelé automatiquement</td></tr>
+      <tr><td>mandix.rt.…</td><td>Renouveler la connexion</td><td>Jusqu'à la fermeture du navigateur, ou 30 jours avec « Rester connecté »</td></tr>
+      <tr><td>mandix.csrf, mandix.vid</td><td>Protéger les formulaires contre les envois frauduleux</td><td>Session, et 1 an pour l'identifiant de visiteur</td></tr>
+      <tr><td>mandix.space</td><td>Retenir le dernier espace consulté</td><td>30 jours</td></tr>
+      <tr><td>mandix.flash</td><td>Afficher un message de confirmation après une action</td><td>5 minutes au plus</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>Votre navigateur garde aussi, sur votre appareil seulement, le choix du mode jour ou nuit et le fait que l'autorisation des notifications vous a été demandée.</p>
+
+<h2>6. Notifications du navigateur</h2>
+<p>Elles ne s'affichent que si vous les autorisez. Vous pouvez retirer cette autorisation à tout moment dans les réglages de votre navigateur.</p>
+
+<h2>7. Vos droits</h2>
+<ul>
+  <li><strong>Consulter et modifier</strong> : depuis « Mon profil » et « Paramètres ».</li>
+  <li><strong>Supprimer</strong> : un client depuis « Paramètres » ; un mandataire par e-mail. Vos données personnelles (e-mail, pseudo, mot de passe) sont alors anonymisées et vos comptes retirés.</li>
+  <li><strong>Toute autre demande</strong> (copie de vos données, question, opposition) : par e-mail.</li>
+</ul>
+
+<h2>8. Contact</h2>
+<p>Pour toute question sur vos données : <a href="mailto:<%= contact.email %>"><%= contact.email %></a> (<%= contact.hours.toLowerCase() %>).</p>

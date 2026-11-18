@@ -90,7 +90,7 @@ const LEGAL_PAGES = {
 };
 
 export function showLegal(pageKey) {
-  return (req, res) => res.render("public/legal", { title: LEGAL_PAGES[pageKey].title });
+  return (req, res) => res.render("public/legal", { title: LEGAL_PAGES[pageKey].title, page: pageKey });
 }
 
 /**
